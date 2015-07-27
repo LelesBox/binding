@@ -6,11 +6,8 @@ var binding = function (args) {
 
     var _binding = function (args) {
         this.args = args;
-
-        if (args.inject) {
-            //_binding.bind(args.inject);
-        }
-        console.log(this);
+        args.data["callbind"] = this.callbind;
+        console.log(args.data);
         var top = document.getElementById(args.id);
         //   遍历节点
         var alldoms = [];
@@ -27,13 +24,16 @@ var binding = function (args) {
                 }
             }
         }
+        //    执行初始化操作init
+        if (args.init) {
+            args.init.apply(args.data);
+        }
     }
+
     _binding.prototype = {
         mount: function (element, args) {
-            var self = this;
             for (var i = 0, d; d = element.attributes[i++];) {
                 //查找文字节点，
-                var regx = /{{(.*?)}}/g;
                 for (var j = 0, node; node = element.childNodes[j++];) {
                     if (node.nodeType === 3 && node.data.trim() !== "") {
                         var matchs = [];
@@ -42,15 +42,15 @@ var binding = function (args) {
                             return args.data[value];
                         })
                         if (matchs.length > 0) {
-                            self.obserStr(node, matchs, args);
+                            this.obserStr(node, matchs, args);
                         }
                     }
                 }
-
                 if (startWith(d.name, "_")) {
                     if (d.name === "_bind") {
                         //初始化
                         element.innerText = args.data[d.value];
+                        //监听data属性变化
                         observe(args.data, [d.value], function (name, value, oldvalue) {
                             element.innerText = value;
                         })
@@ -81,35 +81,46 @@ var binding = function (args) {
                             args[funcName].apply(args.data, p);
                         }
                     }
+                    if (d.name == "_class") {
+                        var express = d.value.split(",");
+                        var func;
+                        for (var j = 0, str; str = express[j++];) {
+                            var _class = str.substr(0, str.indexOf(":"));
+                            var exs = str.substring(str.indexOf(":") + 1);
+                            console.log(_class)
+                            console.log(exs);
+                            exs = "return " + exs;
+                            func = new Function(exs);
+                            if (func()) {
+
+                            }
+                        }
+                    }
                 }
             }
         },
-        obserStr: function obserStr(node, matchs, args) {
+        obserStr: function (node, matchs, args) {
             observe(args.data, matchs, function (name, value, oldvalue) {
                 node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, value, index, str) {
                     return args.data[name];
                 })
             })
         },
-        on: function (funcname, params) {
-            //var self = this;
+        callbind: function (name, funcname, params) {
             if (funcname === "data") {
                 for (var s in params) {
-                    this.args.data[s] = params[s];
+                    binding.binds[name].args.data[s] = params[s];
                 }
             } else {
-                this.args[funcname].apply(this.args.data, params);
+                binding.binds[name].args[funcname].apply(binding.binds[name].args.data, params);
             }
-        },
-        binds: function () {
-
         }
     }
     var _b = new _binding(args);
-    binding.binds.push({id: args.id, context: _b});
-    return _b;
+    binding.binds[args.id] = _b;
+    return binding.binds[args.id];
 }
-binding.binds = [];
+binding.binds = {};
 
 function startWith(target, str, ignorCase) {
     var start_str = target.substr(0, str.length);
@@ -122,16 +133,18 @@ var test = binding({
     data: {
         y: "路人甲",
         pa: 2,
-        count: 123,
+        count: 123
     },
     changeColor: function (y) {
-        this.count += y;
+        this.count++;
         console.log("changeColor" + y);
     },
     //使用bind把上下文文传递过去
     aClick: function (x) {
         this.count = this.count + 2;
         console.log("aClick" + x);
+        //注入id为test1的实例，调用change方法，传入[]参数
+        this.callbind("test1", "change", ["I am LeeBox Do You HEAR ME?"]);
     }
 })
 
@@ -139,8 +152,7 @@ var test = binding({
 var test1 = binding({
     id: "test1",
     data: {
-        kaka: 1,
-        test: test
+        kaka: 1
     },
     change: function (y) {
         this.kaka++;
@@ -148,14 +160,13 @@ var test1 = binding({
     },
     //使用bind把上下文文传递过去
     bClick: function (x) {
-        this.test.on("aClick", [this.kaka++]);
-        this.test.on("data", {count: this.kaka++});
+        this.callbind("test", "aClick", [this.kaka++]);
+        this.callbind("test", "data", {count: this.kaka++});
     },
     init: function () {
-
+        this.kaka = 10086;
     }
 })
-
-//console.log(s.keys)
-//s[0] = 5;
-//console.log("2"+=2)
+var tpl = "return 2>1";
+var myFunction = new Function("a", "b", tpl);
+console.log(myFunction(2, 3))
