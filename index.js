@@ -38,7 +38,21 @@ var binding = function (args) {
                     if (node.nodeType === 3 && node.data.trim() !== "") {
                         var matchs = [];
                         node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
+                            //保存可以动态更新的变量
                             matchs.push(value);
+                            //判断当前的args.data[value]是否为"",这种情况要单独做处理
+                            var s = str.substr(index, match.length);
+                            console.log(s)
+                            if (args.data[value] == "") {
+                                if (!binding.textVariables[value])
+                                    binding.textVariables[value] = [];
+                                //    保存
+                                binding.textVariables[value].push({
+                                    node: node,
+                                    index: index
+                                })
+                            }
+                            console.log(arguments)
                             return args.data[value];
                         })
                         if (matchs.length > 0) {
@@ -85,6 +99,9 @@ var binding = function (args) {
                         var express = d.value.split(",");
                         this._class(element, express);
                     }
+                    if (d.name == "_model") {
+                        this._model(element, d.value)
+                    }
                 }
             }
         },
@@ -116,9 +133,11 @@ var binding = function (args) {
                         for (var k = 0, m; m = ps[k++];) {
                             aps.push(args.data[m]);
                         }
-                        binding.classFuncs[pt].forEach(function (item) {
-                            var result = item.apply(null, aps);
+                        forEach(binding.classFuncs[pt], function (index, item, arr) {
+                            console.log(item)
+                            var result = item._func.apply(null, aps);
                             console.log("class 要改变啦" + result)
+                            console.log(element.className="asd")
                         })
                     })
                 } else {
@@ -145,12 +164,48 @@ var binding = function (args) {
         },
         //监听字符串，主要在处理{{文本}}
         obserStr: function (node, matchs, args) {
-            observe(args.data, matchs, function (name, value, oldvalue) {
-                node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, value, index, str) {
-                    return args.data[name];
-                })
+            observe(args.data, matchs, function (name, newvalue, oldvalue) {
+                //判断改变之前的值oldvalue是否是"",如果是则替换位置,使用过后删除它，防止下次再为“”时，push数据出现重复
+                if (oldvalue == "") {
+                    for (var i = 0, d; d = binding.textVariables[name][i++];) {
+                        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index, d.node.data.length);
+                    }
+                    delete binding.textVariables[name];
+                } else {
+                    node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, index, str) {
+                        if (newvalue == "") {
+                            if (!binding.textVariables[name])
+                                binding.textVariables[name] = [];
+                            //    保存
+                            binding.textVariables[name].push({
+                                node: node,
+                                index: index
+                            })
+                        }
+                        return newvalue;
+                    })
+                }
             })
         },
+        _model: function (element, prop) {
+            var self = this;
+            //初始化input值
+            element.value = self.args.data[prop] || "";
+            //    监听输入时间
+            element.oninput = function (evt) {
+                self.args.data[prop] = this.value;
+                console.log(this.value + "  " + prop);
+            }
+            //    增加点击事件，用于阻止事件冒泡
+            element.onclick = function (event) {
+                if (event.stopPropagation) {
+                    event.stopPropagation();
+                } else {
+                    event.cancelBubble = true;
+                }
+            }
+        },
+        //用于binding之间的通信
         callbind: function (name, funcname, params) {
             if (funcname === "data") {
                 for (var s in params) {
@@ -167,6 +222,11 @@ var binding = function (args) {
 }
 binding.binds = {};
 binding.classFuncs = {};
+//解决疑难杂症的最简单暴力方法是在多放一个观察对象。
+//这里保存的文本变量所在文本的位置，以方便动态更新是可以替换，为什么使用这种方式，因为单纯的替换以前的字符
+//会造成一种情况那就是当以前字符是空字符串时("")，替换就会有问题，所以正则替换这种方法不可行，所以只能再开启一个
+//上帝模式，用于保存状态，当有更新时对比保存的状态和现在的状态去更新数据
+binding.textVariables = {};
 
 function startWith(target, str, ignorCase) {
     var start_str = target.substr(0, str.length);
@@ -175,6 +235,19 @@ function startWith(target, str, ignorCase) {
 function isFunction(obj) {
     return Object.prototype.toString.call(obj) == '[object Function]';
 }
+function forEach(obj, callback) {
+    for (var i = 0, d; d = obj[i++];) {
+        callback(i, d, obj);
+    }
+}
+function addClass(element,classname){
+
+}
+function removeClass(element,classname){
+
+}
+
+
 
 var test = binding({
     id: "test",
@@ -200,7 +273,7 @@ var test = binding({
 var test1 = binding({
     id: "test1",
     data: {
-        kaka: 1
+        kaka: ""
     },
     change: function (y) {
         this.kaka++;
@@ -216,45 +289,3 @@ var test1 = binding({
         //this.kaka = 10086;
     }
 })
-var tpl = "return 2>1";
-var myFunction = new Function("a", "b", tpl);
-console.log(myFunction(2, 3))
-
-var s = {s: 1, b: 2}
-observe(s, "s", function () {
-    console.log("ssss")
-    console.log(arguments)
-})
-observe(s, ["s", "b"], function () {
-    console.log("bbbb")
-    console.log(arguments)
-})
-s.s = 2;
-s.b = 3;
-
-//var s = "var x=kaka.obj+1=2?'kaka':asd"
-////匹配一个变量
-//var reg = /\W(kaka(?!'))\W/g;
-//while (x = reg.exec(s)) {
-//    console.log(x)
-//}
-//
-//var reg = /\b\w+(?=ing\b)/g
-//var str = "I'm singing while you're dancing."
-//while (x = reg.exec(str)) {
-//    console.log(x)
-//}
-//var x = "kaka";
-//var regx = "\\W(" + x + "(?!'))\\W";
-//var rg = new RegExp(regx);
-//var r = /\W(kaka(?!'))\W/;
-//var g = /(^|\W)(kaka(?!'))(\W|$)/
-//var rstr = "(^|\\W)(kaka(?!'))(\\W|$)";
-//g = new RegExp(rstr);
-//console.log(g)
-//console.log(g.test("kaka+1==3"))
-
-//var s = {a: 2, b: 3, c: 4}
-//observe(s, ["a"], function (name, value, old) {
-//    s.a = 3;
-//})
