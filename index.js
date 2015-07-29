@@ -7,7 +7,6 @@ var binding = function (args) {
     var _binding = function (args) {
         this.args = args;
         args.data["callbind"] = this.callbind;
-        console.log(args.data);
         var top = document.getElementById(args.id);
         //   遍历节点
         var alldoms = [];
@@ -31,35 +30,38 @@ var binding = function (args) {
     }
 
     _binding.prototype = {
+        //挂载方法
         mount: function (element, args) {
-            for (var i = 0, d; d = element.attributes[i++];) {
-                //查找文字节点，
-                for (var j = 0, node; node = element.childNodes[j++];) {
-                    if (node.nodeType === 3 && node.data.trim() !== "") {
-                        var matchs = [];
-                        node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
-                            //保存可以动态更新的变量
-                            matchs.push(value);
-                            //判断当前的args.data[value]是否为"",这种情况要单独做处理
-                            var s = str.substr(index, match.length);
-                            console.log(s)
-                            if (args.data[value] == "") {
-                                if (!binding.textVariables[value])
-                                    binding.textVariables[value] = [];
-                                //    保存
-                                binding.textVariables[value].push({
-                                    node: node,
-                                    index: index
-                                })
-                            }
-                            console.log(arguments)
-                            return args.data[value];
-                        })
-                        if (matchs.length > 0) {
-                            this.obserStr(node, matchs, args);
+            //查找文字节点，
+            for (var j = 0, node; node = element.childNodes[j++];) {
+                if (node.nodeType === 3 && node.data.trim() !== "") {
+                    var matchs = [];
+                    node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
+                        //保存可以动态更新的变量
+                        matchs.push(value);
+                        //判断当前的args.data[value]是否为"",这种情况要单独做处理
+                        //if (args.data[value] == "") {
+                        if (!binding.textVariables[value]) {
+                            binding.textVariables[value] = [];
                         }
+                        //}
+                        //    保存
+                        binding.textVariables[value].push({
+                            node: node,
+                            index: index
+                        })
+                        return args.data[value];
+                    })
+                    console.log(matchs)
+                    console.log(binding.textVariables)
+                    //只有匹配到变量才会去监听它
+                    if (matchs.length > 0) {
+                        this.obserStr(node, matchs, args);
                     }
                 }
+            }
+            for (var i = 0, d; d = element.attributes[i++];) {
+                //找到特性属性，以_开头
                 if (startWith(d.name, "_")) {
                     if (d.name === "_bind") {
                         //初始化
@@ -120,7 +122,6 @@ var binding = function (args) {
                         aps.push(args.data[m]);
                     }
                     var result = func.apply(null, aps);
-                    console.log(result);
                     //存入binding.classFuncs
                     if (!binding.classFuncs[pstr]) {
                         binding.classFuncs[pstr] = [];
@@ -128,21 +129,19 @@ var binding = function (args) {
                     binding.classFuncs[pstr].push({_class: _class, _func: func});
                     //    监控参数
                     observe(args.data, ps, function (name, value, oldvale) {
+                        console.log("CLASS CHANGE:" + value);
                         var pt = ps.join(",");
                         var aps = [];
                         for (var k = 0, m; m = ps[k++];) {
                             aps.push(args.data[m]);
                         }
                         forEach(binding.classFuncs[pt], function (index, item, arr) {
-                            console.log(item)
                             var result = item._func.apply(null, aps);
-                            console.log("class 要改变啦" + result)
-                            console.log(element.className="asd")
+                            result ? addClass(element, item._class) : removeClass(element, item._class);
                         })
                     })
                 } else {
                     //    无参数，可是你为什么要写一个无参数的表达式呢，JJ酸
-
                 }
             }
         },
@@ -166,11 +165,14 @@ var binding = function (args) {
         obserStr: function (node, matchs, args) {
             observe(args.data, matchs, function (name, newvalue, oldvalue) {
                 //判断改变之前的值oldvalue是否是"",如果是则替换位置,使用过后删除它，防止下次再为“”时，push数据出现重复
-                if (oldvalue == "") {
+                if ((oldvalue + "").trim() == "") {
                     for (var i = 0, d; d = binding.textVariables[name][i++];) {
-                        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index, d.node.data.length);
+                        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + oldvalue.length, d.node.data.length);
                     }
-                    delete binding.textVariables[name];
+                    //如果新值也是"" 转换为字符串,则不删除
+                    if ((newvalue + "").trim() != "") {
+                        delete binding.textVariables[name];
+                    }
                 } else {
                     node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, index, str) {
                         if (newvalue == "") {
@@ -240,52 +242,96 @@ function forEach(obj, callback) {
         callback(i, d, obj);
     }
 }
-function addClass(element,classname){
-
+function hasClass(obj, cls) {
+    return obj.className.match(new RegExp('(\\s|^)' + cls + '(\\s|$)'));
 }
-function removeClass(element,classname){
-
+function addClass(obj, cls) {
+    if (!this.hasClass(obj, cls)) {
+        obj.className == "" ? obj.className = cls : obj.className += " " + cls;
+    }
+}
+function removeClass(obj, cls) {
+    if (hasClass(obj, cls)) {
+        var reg = new RegExp('(\\s|^)' + cls + '(\\s|$)');
+        obj.className = obj.className.replace(reg, '');
+    }
 }
 
 
+//var test = binding({
+//    id: "test",
+//    data: {
+//        y: "路人甲",
+//        pa: 2,
+//        count: 123
+//    },
+//    changeColor: function (y) {
+//        this.count++;
+//        console.log("changeColor" + y);
+//    },
+//    //使用bind把上下文文传递过去
+//    aClick: function (x) {
+//        this.count = this.count + 2;
+//        console.log("aClick" + x);
+//        //注入id为test1的实例，调用change方法，传入[]参数
+//        this.callbind("test1", "change", ["I am LeeBox Do You HEAR ME?"]);
+//    }
+//})
+//
+//
+//var test1 = binding({
+//    id: "test1",
+//    data: {
+//        kaka: ""
+//    },
+//    change: function (y) {
+//        this.kaka++;
+//        console.log(y);
+//    },
+//    //使用bind把上下文文传递过去
+//    bClick: function (x) {
+//        //this.kaka++;
+//        this.callbind("test", "aClick", [this.kaka++]);
+//        //this.callbind("test", "data", {count: this.kaka++});
+//    },
+//    init: function () {
+//        //this.kaka = 10086;
+//    }
+//})
 
-var test = binding({
-    id: "test",
+binding({
+    id: "vm1",
     data: {
-        y: "路人甲",
-        pa: 2,
-        count: 123
+        a: 0,
+        b: 1,
+        c: 2,
+        count: ""
     },
-    changeColor: function (y) {
-        this.count++;
-        console.log("changeColor" + y);
+    init: function () {
+        this.count = "I AM VIEWMODEL";
     },
-    //使用bind把上下文文传递过去
-    aClick: function (x) {
-        this.count = this.count + 2;
-        console.log("aClick" + x);
-        //注入id为test1的实例，调用change方法，传入[]参数
-        this.callbind("test1", "change", ["I am LeeBox Do You HEAR ME?"]);
+    addCount: function () {
+        this.a++;
+        this.b++;
+        this.c++;
+        this.count = (new Date()).toLocaleString();
+    },
+    callbindTest: function (a) {
+        this.a = a;
     }
 })
 
-
-var test1 = binding({
-    id: "test1",
+binding({
+    id: "vm2",
     data: {
-        kaka: ""
+        a: 0,
+        b: 0,
+        c: 1
     },
-    change: function (y) {
-        this.kaka++;
-        console.log(y);
-    },
-    //使用bind把上下文文传递过去
-    bClick: function (x) {
-        //this.kaka++;
-        this.callbind("test", "aClick", [this.kaka++]);
-        //this.callbind("test", "data", {count: this.kaka++});
-    },
-    init: function () {
-        //this.kaka = 10086;
+    callBind: function (a) {
+        this.a++;
+        this.b++;
+        this.c++;
+        this.callbind("vm1", "callbindTest", [a]);
     }
 })
