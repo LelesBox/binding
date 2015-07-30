@@ -38,22 +38,18 @@ var binding = function (args) {
                     var matchs = [];
                     node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
                         //保存可以动态更新的变量
+                        console.log(str.substr(index, value.length + 4))
                         matchs.push(value);
-                        //判断当前的args.data[value]是否为"",这种情况要单独做处理
-                        //if (args.data[value] == "") {
                         if (!binding.textVariables[value]) {
                             binding.textVariables[value] = [];
                         }
-                        //}
-                        //    保存
+                        // 保存位置
                         binding.textVariables[value].push({
                             node: node,
                             index: index
                         })
                         return args.data[value];
                     })
-                    console.log(matchs)
-                    console.log(binding.textVariables)
                     //只有匹配到变量才会去监听它
                     if (matchs.length > 0) {
                         this.obserStr(node, matchs, args);
@@ -164,29 +160,44 @@ var binding = function (args) {
         //监听字符串，主要在处理{{文本}}
         obserStr: function (node, matchs, args) {
             observe(args.data, matchs, function (name, newvalue, oldvalue) {
-                //判断改变之前的值oldvalue是否是"",如果是则替换位置,使用过后删除它，防止下次再为“”时，push数据出现重复
-                if ((oldvalue + "").trim() == "") {
-                    for (var i = 0, d; d = binding.textVariables[name][i++];) {
-                        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + oldvalue.length, d.node.data.length);
-                    }
-                    //如果新值也是"" 转换为字符串,则不删除
-                    if ((newvalue + "").trim() != "") {
-                        delete binding.textVariables[name];
-                    }
-                } else {
-                    node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, index, str) {
-                        if (newvalue == "") {
-                            if (!binding.textVariables[name])
-                                binding.textVariables[name] = [];
-                            //    保存
-                            binding.textVariables[name].push({
-                                node: node,
-                                index: index
-                            })
-                        }
-                        return newvalue;
-                    })
+                //
+                console.log(arguments)
+
+                for (var i = 0, d; d = binding.textVariables[name][i++];) {
+                    console.log(d.node.data)
+                    d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + (oldvalue + "").length, d.node.data.length);
+                    console.log(d.node.data)
+                    //    因为字符长度改变的话，下一个参数的index就不那么准确了
+                    //var t = binding.textVariables[name][i + 1];
+                    //if (t) {
+                    //    t.index = t.index + ((newvalue + "").length - (oldvalue + "").length);
+                    //}
                 }
+
+                //判断改变之前的值oldvalue是否是"",如果是则替换位置,使用过后删除它，防止下次再为“”时，push数据出现重复
+                //if ((oldvalue + "").trim() == "") {
+                //    for (var i = 0, d; d = binding.textVariables[name][i++];) {
+                //        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + oldvalue.length, d.node.data.length);
+                //    }
+                //    //如果新值也是"" 转换为字符串,则不删除
+                //    if ((newvalue + "").trim() != "") {
+                //        delete binding.textVariables[name];
+                //    }
+                //} else {
+                //    node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, index, str) {
+                //        console.log(arguments)
+                //        if (newvalue == "") {
+                //            if (!binding.textVariables[name])
+                //                binding.textVariables[name] = [];
+                //            //    保存
+                //            binding.textVariables[name].push({
+                //                node: node,
+                //                index: index
+                //            })
+                //        }
+                //        return newvalue;
+                //    })
+                //}
             })
         },
         _model: function (element, prop) {
