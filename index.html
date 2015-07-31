@@ -47,16 +47,16 @@
 <!--</div>-->
 
 <div id="vm1" class="vm2" _class="yellow:a==1,red:b==3,blue:c==5">
-    {{a}} {{b}} {{c}}
+    {{a}} {{b}} {{c}} {{a}}
     <!--<p>{{a}} {{b}} {{c}}</p>-->
     <input type="text" _model="count"/>
     <a href="javascript:;" _click="addCount()">{{count}}</a>
 </div>
-<div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue+5:c==8">
-    <!--<p>{{a}} {{b}} {{c}}</p>-->
+<!--<div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue+5:c==8">-->
+    <!--&lt;!&ndash;<p>{{a}} {{b}} {{c}}</p>&ndash;&gt;-->
 
-    <div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>
-</div>
+    <!--<div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>-->
+<!--</div>-->
 <script src="index.js"></script>
 </body>
 </html>

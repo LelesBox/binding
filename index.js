@@ -35,25 +35,56 @@ var binding = function (args) {
             //查找文字节点，
             for (var j = 0, node; node = element.childNodes[j++];) {
                 if (node.nodeType === 3 && node.data.trim() !== "") {
+                    node.textnode_offset = 0;
+                    binding.textnodes[binding.textnodeid] = {};
+                    binding.textnodes[binding.textnodeid]["node"] = node;
+                    //保存此node下的文本变量
+                    binding.textnodes[binding.textnodeid]["variables"] = [];
                     var matchs = [];
+                    //顺序，用于之后动态更新时只更新大于id后面的位置
+                    var id = 0;
+                    //偏移
+                    var offset = 0;
+                    //node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
+                    //    //保存可以动态更新的变量
+                    //    matchs.push(value);
+                    //    if (!binding.textVariables[value]) {
+                    //        binding.textVariables[value] = [];
+                    //    }
+                    //    //记录node中text的总体，挂在在node上，因为在以后的变化中总是单个变量的变化，这里初始化为0
+                    //    // 保存位置
+                    //    binding.textVariables[value].push({
+                    //        id: id++,
+                    //        nodeid: binding.textnodeid,
+                    //        index: index - offset
+                    //    })
+                    //    //因为字符串被替换了，所以index也会相应的移动才能再下次替换时找到正确的位置
+                    //    offset = offset + match.length - (args.data[value] + "").length;
+                    //
+                    //    binding.textnodes[binding.textnodeid]["variables"].push(value);
+                    //    return args.data[value];
+                    //})
+
+
+                    var snippts = [];
+                    var offset = 0;
                     node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
                         //保存可以动态更新的变量
-                        console.log(str.substr(index, value.length + 4))
-                        matchs.push(value);
-                        if (!binding.textVariables[value]) {
-                            binding.textVariables[value] = [];
-                        }
-                        // 保存位置
-                        binding.textVariables[value].push({
-                            node: node,
-                            index: index
-                        })
+                        snippts.push(str.substr(offset, index));
+                        console.log(str.substr(offset, index))
+                        console.log(offset)
+                        console.log(index)
+                        offset = offset + 4 + value.length;
                         return args.data[value];
                     })
+                    console.log(snippts);
+
+                    //console.log(binding.textVariables)
                     //只有匹配到变量才会去监听它
                     if (matchs.length > 0) {
                         this.obserStr(node, matchs, args);
                     }
+                    binding.textnodeid++;
                 }
             }
             for (var i = 0, d; d = element.attributes[i++];) {
@@ -161,12 +192,17 @@ var binding = function (args) {
         obserStr: function (node, matchs, args) {
             observe(args.data, matchs, function (name, newvalue, oldvalue) {
                 //
-                console.log(arguments)
-
+                console.log(name)
                 for (var i = 0, d; d = binding.textVariables[name][i++];) {
-                    console.log(d.node.data)
-                    d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + (oldvalue + "").length, d.node.data.length);
-                    console.log(d.node.data)
+                    console.log(d)
+                    //console.log(d.node.data.slice(0, d.index))
+                    //console.log(d.node.data)
+                    var textnode = binding.textnodes[d.nodeid];
+                    var node = textnode.node;
+                    node.data = node.data.slice(0, d.index) + newvalue + node.data.slice(d.index + (oldvalue + "").length, node.data.length);
+                    //找出同一个nodeid下的所有textVariables，在d的id后面的index都要更新
+                    //for(var j= 0,m=binding.textVariables)
+                    //console.log(d.node.data)
                     //    因为字符长度改变的话，下一个参数的index就不那么准确了
                     //var t = binding.textVariables[name][i + 1];
                     //if (t) {
@@ -233,6 +269,10 @@ var binding = function (args) {
     binding.binds[args.id] = _b;
     return binding.binds[args.id];
 }
+//用于标识binding中文本节点的id
+binding.textnodeid = 0;
+//保存存在变量的文本节点
+binding.textnodes = {};
 binding.binds = {};
 binding.classFuncs = {};
 //解决疑难杂症的最简单暴力方法是在多放一个观察对象。
@@ -313,36 +353,36 @@ function removeClass(obj, cls) {
 binding({
     id: "vm1",
     data: {
-        a: 0,
-        b: 1,
-        c: 2,
+        a: 101,
+        b: 111,
+        c: 121,
         count: ""
     },
     init: function () {
-        this.count = "I AM VIEWMODEL";
+        //this.count = "I AM VIEWMODEL";
     },
     addCount: function () {
         this.a++;
         this.b++;
         this.c++;
-        this.count = (new Date()).toLocaleString();
+        //this.count = (new Date()).toLocaleString();
     },
     callbindTest: function (a) {
         this.a = a;
     }
 })
 
-binding({
-    id: "vm2",
-    data: {
-        a: 0,
-        b: 0,
-        c: 1
-    },
-    callBind: function (a) {
-        this.a++;
-        this.b++;
-        this.c++;
-        this.callbind("vm1", "callbindTest", [a]);
-    }
-})
+//binding({
+//    id: "vm2",
+//    data: {
+//        a: 0,
+//        b: 0,
+//        c: 1
+//    },
+//    callBind: function (a) {
+//        this.a++;
+//        this.b++;
+//        this.c++;
+//        this.callbind("vm1", "callbindTest", [a]);
+//    }
+//})
