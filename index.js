@@ -1,9 +1,15 @@
 /**
  * Created by li_xiaoliang on 2015/7/25.
  */
-
 var binding = function (args) {
-
+    //用于标识binding中文本节点的id
+    var textnodeid = 0;
+    //保存存在变量的文本节点
+    var textnodes = {};
+    //文本变量和对应的nodeid，
+    var textVariables = {};
+    //_class表达式
+    var classFuncs = {};
     var _binding = function (args) {
         this.args = args;
         args.data["callbind"] = this.callbind;
@@ -27,6 +33,8 @@ var binding = function (args) {
         if (args.init) {
             args.init.apply(args.data);
         }
+        //    监听所有data数据
+        this.obserData(args);
     }
 
     _binding.prototype = {
@@ -35,56 +43,34 @@ var binding = function (args) {
             //查找文字节点，
             for (var j = 0, node; node = element.childNodes[j++];) {
                 if (node.nodeType === 3 && node.data.trim() !== "") {
-                    node.textnode_offset = 0;
-                    binding.textnodes[binding.textnodeid] = {};
-                    binding.textnodes[binding.textnodeid]["node"] = node;
+                    textnodes[textnodeid] = {};
+                    textnodes[textnodeid]["node"] = node;
                     //保存此node下的文本变量
-                    binding.textnodes[binding.textnodeid]["variables"] = [];
+                    //binding.textnodes[binding.textnodeid]["variables"] = [];
                     var matchs = [];
                     //顺序，用于之后动态更新时只更新大于id后面的位置
-                    var id = 0;
-                    //偏移
+                    var t = "''";
                     var offset = 0;
-                    //node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
-                    //    //保存可以动态更新的变量
-                    //    matchs.push(value);
-                    //    if (!binding.textVariables[value]) {
-                    //        binding.textVariables[value] = [];
-                    //    }
-                    //    //记录node中text的总体，挂在在node上，因为在以后的变化中总是单个变量的变化，这里初始化为0
-                    //    // 保存位置
-                    //    binding.textVariables[value].push({
-                    //        id: id++,
-                    //        nodeid: binding.textnodeid,
-                    //        index: index - offset
-                    //    })
-                    //    //因为字符串被替换了，所以index也会相应的移动才能再下次替换时找到正确的位置
-                    //    offset = offset + match.length - (args.data[value] + "").length;
-                    //
-                    //    binding.textnodes[binding.textnodeid]["variables"].push(value);
-                    //    return args.data[value];
-                    //})
-
-
-                    var snippts = [];
-                    var offset = 0;
+                    var text = "";
+                    node.data = node.data.replace(/\n/g, "");
                     node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
                         //保存可以动态更新的变量
-                        snippts.push(str.substr(offset, index));
-                        console.log(str.substr(offset, index))
-                        console.log(offset)
-                        console.log(index)
-                        offset = offset + 4 + value.length;
+                        dupArrayByAdd(matchs, value);
+                        //保存变量对应的nodeid
+                        if (!textVariables[value]) {
+                            textVariables[value] = [];
+                        }
+                        dupArrayByAdd(textVariables[value], textnodeid);
+                        t = t + "+'" + str.substring(offset, index) + "'+" + value;
+                        offset = index + match.length;
+                        text = str;
                         return args.data[value];
                     })
-                    console.log(snippts);
-
-                    //console.log(binding.textVariables)
-                    //只有匹配到变量才会去监听它
-                    if (matchs.length > 0) {
-                        this.obserStr(node, matchs, args);
-                    }
-                    binding.textnodeid++;
+                    t = t + "+'" + text.substring(offset, text.length) + "'";
+                    var tt = new Function(matchs.join(","), "return " + t);
+                    textnodes[textnodeid]["func"] = tt;
+                    textnodes[textnodeid]["params"] = matchs;
+                    textnodeid++;
                 }
             }
             for (var i = 0, d; d = element.attributes[i++];) {
@@ -99,30 +85,7 @@ var binding = function (args) {
                         })
                     }
                     if (d.name === "_click") {
-                        //    解析字符串，获取函数名和方法参数，判断参数是变量还是字符串
-                        var str = d.value;
-                        var funcName = str.substr(0, str.indexOf("("));
-                        var paramStr = str.substring(str.indexOf("(") + 1, str.length - 1);
-                        var params = paramStr.split(",");
-                        element.onclick = function (event) {
-                            //不冒泡
-                            if (event.stopPropagation) {
-                                event.stopPropagation();
-                            } else {
-                                event.cancelBubble = true;
-                            }
-                            //    遍历，如果带‘’则认为是字符串，如果没有则认为是变量
-                            var p = [];
-                            for (var j = 0, param; param = params[j++];) {
-                                //如果符合字符串，则去掉单引号后把该字符串push进数组，否则是变量
-                                if (param.indexOf("'") > -1) {
-                                    p.push(param.substr(1, param.length - 2));
-                                } else {
-                                    p.push(args.data[param]);
-                                }
-                            }
-                            args[funcName].apply(args.data, p);
-                        }
+                        this._click(element, d, args);
                     }
                     if (d.name == "_class") {
                         var express = d.value.split(",");
@@ -132,6 +95,32 @@ var binding = function (args) {
                         this._model(element, d.value)
                     }
                 }
+            }
+        },
+        _click: function (element, d, args) {
+            //    解析字符串，获取函数名和方法参数，判断参数是变量还是字符串
+            var str = d.value;
+            var funcName = str.substr(0, str.indexOf("("));
+            var paramStr = str.substring(str.indexOf("(") + 1, str.length - 1);
+            var params = paramStr.split(",");
+            element.onclick = function (event) {
+                //不冒泡
+                if (event.stopPropagation) {
+                    event.stopPropagation();
+                } else {
+                    event.cancelBubble = true;
+                }
+                //    遍历，如果带‘’则认为是字符串，如果没有则认为是变量
+                var p = [];
+                for (var j = 0, param; param = params[j++];) {
+                    //如果符合字符串，则去掉单引号后把该字符串push进数组，否则是变量
+                    if (param.indexOf("'") > -1) {
+                        p.push(param.substr(1, param.length - 2));
+                    } else {
+                        p.push(args.data[param]);
+                    }
+                }
+                args[funcName].apply(args.data, p);
             }
         },
         _class: function (element, express) {
@@ -148,29 +137,30 @@ var binding = function (args) {
                     for (var k = 0, m; m = ps[k++];) {
                         aps.push(args.data[m]);
                     }
-                    var result = func.apply(null, aps);
                     //存入binding.classFuncs
-                    if (!binding.classFuncs[pstr]) {
-                        binding.classFuncs[pstr] = [];
+                    if (!classFuncs[pstr]) {
+                        classFuncs[pstr] = [];
                     }
-                    binding.classFuncs[pstr].push({_class: _class, _func: func});
-                    //    监控参数
-                    observe(args.data, ps, function (name, value, oldvale) {
-                        console.log("CLASS CHANGE:" + value);
-                        var pt = ps.join(",");
-                        var aps = [];
-                        for (var k = 0, m; m = ps[k++];) {
-                            aps.push(args.data[m]);
-                        }
-                        forEach(binding.classFuncs[pt], function (index, item, arr) {
-                            var result = item._func.apply(null, aps);
-                            result ? addClass(element, item._class) : removeClass(element, item._class);
-                        })
-                    })
+                    classFuncs[pstr].push({
+                        _element: element,
+                        _class: _class,
+                        _func: func,
+                        _params: ps
+                    });
                 } else {
                     //    无参数，可是你为什么要写一个无参数的表达式呢，JJ酸
                 }
             }
+            observe(args.data, function (name, value, oldvale) {
+                forEach(classFuncs[name], function (index, item, arr) {
+                    var params = [];
+                    for (var i = 0; i < item._params.length; i++) {
+                        params.push(args.data[item._params[i]]);
+                    }
+                    var result = item._func.apply(null, params);
+                    result ? addClass(item._element, item._class) : removeClass(item._element, item._class);
+                })
+            })
         },
         //从表达式里抽取现有的参数
         extractParam: function (express) {
@@ -189,51 +179,22 @@ var binding = function (args) {
             return params;
         },
         //监听字符串，主要在处理{{文本}}
-        obserStr: function (node, matchs, args) {
-            observe(args.data, matchs, function (name, newvalue, oldvalue) {
-                //
-                console.log(name)
-                for (var i = 0, d; d = binding.textVariables[name][i++];) {
-                    console.log(d)
-                    //console.log(d.node.data.slice(0, d.index))
-                    //console.log(d.node.data)
-                    var textnode = binding.textnodes[d.nodeid];
-                    var node = textnode.node;
-                    node.data = node.data.slice(0, d.index) + newvalue + node.data.slice(d.index + (oldvalue + "").length, node.data.length);
-                    //找出同一个nodeid下的所有textVariables，在d的id后面的index都要更新
-                    //for(var j= 0,m=binding.textVariables)
-                    //console.log(d.node.data)
-                    //    因为字符长度改变的话，下一个参数的index就不那么准确了
-                    //var t = binding.textVariables[name][i + 1];
-                    //if (t) {
-                    //    t.index = t.index + ((newvalue + "").length - (oldvalue + "").length);
-                    //}
+        obserData: function (args) {
+            observe(args.data, function (name, newvalue, oldvalue) {
+                var tv = textVariables[name];
+                for (var i = tv.length - 1; i > -1; i--) {
+                    var textnode = textnodes[tv[i]];
+                    //如果是input类型
+                    if (textnode.type == "input") {
+                        textnode.node.value = args.data[textnode.variable];
+                    } else {
+                        var params = [];
+                        for (var j = 0; j < textnode.params.length; j++) {
+                            params.push(args.data[textnode.params[j]]);
+                        }
+                        textnode.node.data = textnode.func.apply(null, params);
+                    }
                 }
-
-                //判断改变之前的值oldvalue是否是"",如果是则替换位置,使用过后删除它，防止下次再为“”时，push数据出现重复
-                //if ((oldvalue + "").trim() == "") {
-                //    for (var i = 0, d; d = binding.textVariables[name][i++];) {
-                //        d.node.data = d.node.data.slice(0, d.index) + newvalue + d.node.data.slice(d.index + oldvalue.length, d.node.data.length);
-                //    }
-                //    //如果新值也是"" 转换为字符串,则不删除
-                //    if ((newvalue + "").trim() != "") {
-                //        delete binding.textVariables[name];
-                //    }
-                //} else {
-                //    node.data = node.data.replace(new RegExp(oldvalue, "g"), function (match, index, str) {
-                //        console.log(arguments)
-                //        if (newvalue == "") {
-                //            if (!binding.textVariables[name])
-                //                binding.textVariables[name] = [];
-                //            //    保存
-                //            binding.textVariables[name].push({
-                //                node: node,
-                //                index: index
-                //            })
-                //        }
-                //        return newvalue;
-                //    })
-                //}
             })
         },
         _model: function (element, prop) {
@@ -243,7 +204,6 @@ var binding = function (args) {
             //    监听输入时间
             element.oninput = function (evt) {
                 self.args.data[prop] = this.value;
-                console.log(this.value + "  " + prop);
             }
             //    增加点击事件，用于阻止事件冒泡
             element.onclick = function (event) {
@@ -253,6 +213,12 @@ var binding = function (args) {
                     event.cancelBubble = true;
                 }
             }
+            var nodeid = textnodeid++;
+            textnodes[nodeid] = {node: element, type: "input", variable: prop};
+            if (!textVariables[prop]) {
+                textVariables[prop] = [];
+            }
+            dupArrayByAdd(textVariables[prop], nodeid);
         },
         //用于binding之间的通信
         callbind: function (name, funcname, params) {
@@ -269,17 +235,10 @@ var binding = function (args) {
     binding.binds[args.id] = _b;
     return binding.binds[args.id];
 }
-//用于标识binding中文本节点的id
-binding.textnodeid = 0;
-//保存存在变量的文本节点
-binding.textnodes = {};
+//保存binding实例，用作在binding之间的通信
 binding.binds = {};
-binding.classFuncs = {};
-//解决疑难杂症的最简单暴力方法是在多放一个观察对象。
-//这里保存的文本变量所在文本的位置，以方便动态更新是可以替换，为什么使用这种方式，因为单纯的替换以前的字符
-//会造成一种情况那就是当以前字符是空字符串时("")，替换就会有问题，所以正则替换这种方法不可行，所以只能再开启一个
-//上帝模式，用于保存状态，当有更新时对比保存的状态和现在的状态去更新数据
-binding.textVariables = {};
+//测试代码。用于获取内部的数据用于外部测试
+binding.test = {};
 
 function startWith(target, str, ignorCase) {
     var start_str = target.substr(0, str.length);
@@ -304,51 +263,19 @@ function addClass(obj, cls) {
 function removeClass(obj, cls) {
     if (hasClass(obj, cls)) {
         var reg = new RegExp('(\\s|^)' + cls + '(\\s|$)');
-        obj.className = obj.className.replace(reg, '');
+        obj.className = obj.className.replace(reg, " ");
+        obj.className = obj.className.replace(/  /g, "");
     }
 }
-
-
-//var test = binding({
-//    id: "test",
-//    data: {
-//        y: "路人甲",
-//        pa: 2,
-//        count: 123
-//    },
-//    changeColor: function (y) {
-//        this.count++;
-//        console.log("changeColor" + y);
-//    },
-//    //使用bind把上下文文传递过去
-//    aClick: function (x) {
-//        this.count = this.count + 2;
-//        console.log("aClick" + x);
-//        //注入id为test1的实例，调用change方法，传入[]参数
-//        this.callbind("test1", "change", ["I am LeeBox Do You HEAR ME?"]);
-//    }
-//})
-//
-//
-//var test1 = binding({
-//    id: "test1",
-//    data: {
-//        kaka: ""
-//    },
-//    change: function (y) {
-//        this.kaka++;
-//        console.log(y);
-//    },
-//    //使用bind把上下文文传递过去
-//    bClick: function (x) {
-//        //this.kaka++;
-//        this.callbind("test", "aClick", [this.kaka++]);
-//        //this.callbind("test", "data", {count: this.kaka++});
-//    },
-//    init: function () {
-//        //this.kaka = 10086;
-//    }
-//})
+//在添加进数组时进行去重
+function dupArrayByAdd(arr, value) {
+    for (var i = arr.length - 1; i > -1; i--) {
+        if (value == arr[i]) {
+            return
+        }
+    }
+    arr.push(value);
+}
 
 binding({
     id: "vm1",
@@ -372,17 +299,18 @@ binding({
     }
 })
 
-//binding({
-//    id: "vm2",
-//    data: {
-//        a: 0,
-//        b: 0,
-//        c: 1
-//    },
-//    callBind: function (a) {
-//        this.a++;
-//        this.b++;
-//        this.c++;
-//        this.callbind("vm1", "callbindTest", [a]);
-//    }
-//})
+binding({
+    id: "vm2",
+    data: {
+        a: 0,
+        b: 0,
+        c: 1
+    },
+    callBind: function (a) {
+        this.a++;
+        this.b++;
+        this.c++;
+        this.callbind("vm1", "callbindTest", [a]);
+    }
+})
+

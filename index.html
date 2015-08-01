@@ -6,15 +6,15 @@
     <script src="observe.js"></script>
     <style>
         .yellow {
-            background-color: yellow;
+            border-radius: 50%;
         }
 
         .red {
-            background-color: red;
+            border-radius: 10%;
         }
 
         .blue {
-            background-color: blue;
+            border-radius: 60%;
         }
 
         .vm1, .vm2 {
@@ -25,38 +25,16 @@
     </style>
 </head>
 <body>
-<!--<div id="test" style="height: 100px;width:500px;font-size:23px; background-color: yellow"-->
-     <!--_click="changeColor(pa)">-->
-    <!--看我变{{count}}次-->
-    <!--<a href="#s">{{count}}</a>-->
-
-    <!--<p>-->
-        <!--<a href="#s" id="a" _click="aClick(count)">ssasd</a>-->
-    <!--</p>-->
-<!--</div>-->
-
-<!--<div id="test1" style="height: 200px;width:200px;font-size:23px; background-color: yellow"-->
-     <!--_click="change(kaka)" _class="test:'3'>'11',tt:kaka+1==3">-->
-    <!--看我变{{kaka}}次-->
-    <!--<a href="#ss"></a>-->
-
-    <!--<p>-->
-        <!--<a href="#s" _click="bClick(kaka)">ssasd</a>-->
-    <!--</p>-->
-    <!--<input type="text" _model="kaka"/>-->
-<!--</div>-->
-
 <div id="vm1" class="vm2" _class="yellow:a==1,red:b==3,blue:c==5">
     {{a}} {{b}} {{c}} {{a}}
-    <!--<p>{{a}} {{b}} {{c}}</p>-->
-    <input type="text" _model="count"/>
-    <a href="javascript:;" _click="addCount()">{{count}}</a>
+    <p>{{a}} {{b}} {{c}}</p>
+    <input type="text" _model="a"/>
+    <a href="javascript:;" _click="addCount()">{{a}}</a>
 </div>
-<!--<div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue+5:c==8">-->
-    <!--&lt;!&ndash;<p>{{a}} {{b}} {{c}}</p>&ndash;&gt;-->
-
-    <!--<div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>-->
-<!--</div>-->
+<div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue:5+c==8">
+    <p>{{a}} {{b}} {{c}}</p>
+    <div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>
+</div>
 <script src="index.js"></script>
 </body>
 </html>
