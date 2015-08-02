@@ -1,6 +1,7 @@
 /**
  * Created by li_xiaoliang on 2015/7/25.
  */
+
 var binding = function (args) {
     //用于标识binding中文本节点的id
     var textnodeid = 0;
@@ -19,6 +20,7 @@ var binding = function (args) {
         alldoms.push(top);
         //子节点
         var d;
+        //非递归版的遍历方法
         while (d = alldoms.shift()) {
             this.mount(d, args);
             var length = d.children.length;
@@ -64,7 +66,11 @@ var binding = function (args) {
                         t = t + "+'" + str.substring(offset, index) + "'+" + value;
                         offset = index + match.length;
                         text = str;
-                        return args.data[value];
+                        if (args.data[value] != undefined) {
+                            return args.data[value];
+                        } else {
+                            return match;
+                        }
                     })
                     t = t + "+'" + text.substring(offset, text.length) + "'";
                     var tt = new Function(matchs.join(","), "return " + t);
@@ -133,10 +139,13 @@ var binding = function (args) {
                 if (ps.length > 0) {
                     var pstr = ps.join(",");
                     var func = new Function(pstr, "return " + exs);
-                    var aps = [];
-                    for (var k = 0, m; m = ps[k++];) {
-                        aps.push(args.data[m]);
+                    //初始化样式
+                    var params = [];
+                    for (var i = 0; i < ps.length; i++) {
+                        params.push(args.data[ps[i]]);
                     }
+                    var result = func.apply(null, params);
+                    result ? addClass(element, _class) : removeClass(element, _class);
                     //存入binding.classFuncs
                     if (!classFuncs[pstr]) {
                         classFuncs[pstr] = [];
@@ -148,7 +157,7 @@ var binding = function (args) {
                         _params: ps
                     });
                 } else {
-                    //    无参数，可是你为什么要写一个无参数的表达式呢，JJ酸
+                    //    无参数，可是你为什么要写一个无参数的表达式呢？
                 }
             }
             observe(args.data, function (name, value, oldvale) {
@@ -182,17 +191,19 @@ var binding = function (args) {
         obserData: function (args) {
             observe(args.data, function (name, newvalue, oldvalue) {
                 var tv = textVariables[name];
-                for (var i = tv.length - 1; i > -1; i--) {
-                    var textnode = textnodes[tv[i]];
-                    //如果是input类型
-                    if (textnode.type == "input") {
-                        textnode.node.value = args.data[textnode.variable];
-                    } else {
-                        var params = [];
-                        for (var j = 0; j < textnode.params.length; j++) {
-                            params.push(args.data[textnode.params[j]]);
+                if (tv) {
+                    for (var i = tv.length - 1; i > -1; i--) {
+                        var textnode = textnodes[tv[i]];
+                        //如果是input类型
+                        if (textnode.type == "input") {
+                            textnode.node.value = args.data[textnode.variable];
+                        } else {
+                            var params = [];
+                            for (var j = 0; j < textnode.params.length; j++) {
+                                params.push(args.data[textnode.params[j]]);
+                            }
+                            textnode.node.data = textnode.func.apply(null, params);
                         }
-                        textnode.node.data = textnode.func.apply(null, params);
                     }
                 }
             })
@@ -256,7 +267,7 @@ function hasClass(obj, cls) {
     return obj.className.match(new RegExp('(\\s|^)' + cls + '(\\s|$)'));
 }
 function addClass(obj, cls) {
-    if (!this.hasClass(obj, cls)) {
+    if (!hasClass(obj, cls)) {
         obj.className == "" ? obj.className = cls : obj.className += " " + cls;
     }
 }
@@ -280,9 +291,9 @@ function dupArrayByAdd(arr, value) {
 binding({
     id: "vm1",
     data: {
-        a: 101,
-        b: 111,
-        c: 121,
+        a: 0,
+        b: 1,
+        c: 1,
         count: ""
     },
     init: function () {
@@ -303,7 +314,7 @@ binding({
     id: "vm2",
     data: {
         a: 0,
-        b: 0,
+        b: 1,
         c: 1
     },
     callBind: function (a) {
