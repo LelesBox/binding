@@ -11,6 +11,8 @@ var binding = function (args) {
     var textVariables = {};
     //_class表达式
     var classFuncs = {};
+    //由于中文的输入法对导致监听oninput事件时触发事件，所以需要在输入input时数据保存到data上下文但是不触发observe更新，所以这里需要一个指示flag
+    var inputing = false;
     var _binding = function (args) {
         this.args = args;
         args.data["callbind"] = this.callbind;
@@ -48,25 +50,23 @@ var binding = function (args) {
                     textnodes[textnodeid] = {};
                     textnodes[textnodeid]["node"] = node;
                     //保存此node下的文本变量
-                    //binding.textnodes[binding.textnodeid]["variables"] = [];
                     var matchs = [];
-                    //顺序，用于之后动态更新时只更新大于id后面的位置
                     var t = "''";
                     var offset = 0;
                     var text = "";
                     node.data = node.data.replace(/\n/g, "");
                     node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
                         //保存可以动态更新的变量
-                        dupArrayByAdd(matchs, value);
                         //保存变量对应的nodeid
                         if (!textVariables[value]) {
                             textVariables[value] = [];
                         }
-                        dupArrayByAdd(textVariables[value], textnodeid);
-                        t = t + "+'" + str.substring(offset, index) + "'+" + value;
-                        offset = index + match.length;
-                        text = str;
                         if (args.data[value] != undefined) {
+                            dupArrayByAdd(matchs, value);
+                            t = t + "+'" + str.substring(offset, index) + "'+" + value;
+                            dupArrayByAdd(textVariables[value], textnodeid);
+                            offset = index + match.length;
+                            text = str;
                             return args.data[value];
                         } else {
                             return match;
@@ -83,12 +83,7 @@ var binding = function (args) {
                 //找到特性属性，以_开头
                 if (startWith(d.name, "_")) {
                     if (d.name === "_bind") {
-                        //初始化
-                        element.innerText = args.data[d.value];
-                        //监听data属性变化
-                        observe(args.data, [d.value], function (name, value, oldvalue) {
-                            element.innerText = value;
-                        })
+
                     }
                     if (d.name === "_click") {
                         this._click(element, d, args);
@@ -99,6 +94,13 @@ var binding = function (args) {
                     }
                     if (d.name == "_model") {
                         this._model(element, d.value)
+                    }
+                    if (d.name == "_change") {
+                        this._change(element, d.value);
+                    }
+                    //使用select元素时，这个值绑定选定的option值
+                    if (d.name == "_selected") {
+                        this._selected(element, d.value)
                     }
                 }
             }
@@ -116,13 +118,18 @@ var binding = function (args) {
                 } else {
                     event.cancelBubble = true;
                 }
-                //    遍历，如果带‘’则认为是字符串，如果没有则认为是变量
                 var p = [];
                 for (var j = 0, param; param = params[j++];) {
                     //如果符合字符串，则去掉单引号后把该字符串push进数组，否则是变量
+                    //如果是字符
                     if (param.indexOf("'") > -1) {
                         p.push(param.substr(1, param.length - 2));
-                    } else {
+                    }
+                    //数字
+                    else if (parseInt(param) != NaN) {
+                        p.push(parseInt(param));
+                    }
+                    else {
                         p.push(args.data[param]);
                     }
                 }
@@ -130,7 +137,7 @@ var binding = function (args) {
             }
         },
         _class: function (element, express) {
-            //匹配一个变量
+            //解析_class表达式  red:1+2==3 左边类，右边表达式
             for (var j = 0, str; str = express[j++];) {
                 var _class = str.substr(0, str.indexOf(":"));
                 var exs = str.substring(str.indexOf(":") + 1);
@@ -161,19 +168,22 @@ var binding = function (args) {
                 }
             }
             observe(args.data, function (name, value, oldvale) {
-                forEach(classFuncs[name], function (index, item, arr) {
-                    var params = [];
-                    for (var i = 0; i < item._params.length; i++) {
-                        params.push(args.data[item._params[i]]);
-                    }
-                    var result = item._func.apply(null, params);
-                    result ? addClass(item._element, item._class) : removeClass(item._element, item._class);
-                })
+                if (classFuncs[name] && classFuncs[name].length > 0) {
+                    forEach(classFuncs[name], function (index, item, arr) {
+                        var params = [];
+                        for (var i = 0; i < item._params.length; i++) {
+                            params.push(args.data[item._params[i]]);
+                        }
+                        var result = item._func.apply(null, params);
+                        result ? addClass(item._element, item._class) : removeClass(item._element, item._class);
+                    })
+                }
             })
         },
         //从表达式里抽取现有的参数
         extractParam: function (express) {
             var params = [];
+
             for (var s in args.data) {
                 //获取非函数变量
                 if (args.data.hasOwnProperty(s) && !isFunction(args.data[s])) {
@@ -196,7 +206,9 @@ var binding = function (args) {
                         var textnode = textnodes[tv[i]];
                         //如果是input类型
                         if (textnode.type == "input") {
-                            textnode.node.value = args.data[textnode.variable];
+                            //textnode.node.value = "";
+                            if (!inputing)
+                                textnode.node.value = args.data[textnode.variable];
                         } else {
                             var params = [];
                             for (var j = 0; j < textnode.params.length; j++) {
@@ -213,8 +225,11 @@ var binding = function (args) {
             //初始化input值
             element.value = self.args.data[prop] || "";
             //    监听输入时间
+            var regx = /( *)/g;
             element.oninput = function (evt) {
+                inputing = true;
                 self.args.data[prop] = this.value;
+                inputing = false;
             }
             //    增加点击事件，用于阻止事件冒泡
             element.onclick = function (event) {
@@ -224,12 +239,31 @@ var binding = function (args) {
                     event.cancelBubble = true;
                 }
             }
+
             var nodeid = textnodeid++;
             textnodes[nodeid] = {node: element, type: "input", variable: prop};
             if (!textVariables[prop]) {
                 textVariables[prop] = [];
             }
             dupArrayByAdd(textVariables[prop], nodeid);
+        },
+        _change: function (element, value) {
+            console.log(element.options);
+            element.onchange = function () {
+                //    TODO
+            }
+        },
+        _selected: function (element, value) {
+            //由于监听事件还未开始，所以这里设置不会反应到前台，所以需要实现一个
+            //等待事件触发队列，等待监听开始时去扫描等待序列并逐个触发它们，明天做
+            this.args.data.data=2;
+            var self = this;
+            //初始化
+            self.args.data[value] = element.options[element.options.selectedIndex].value;
+            element.onchange = function () {
+                self.args.data[value] = this.options[this.options.selectedIndex].value;
+            }
+            console.log(this.args.data)
         },
         //用于binding之间的通信
         callbind: function (name, funcname, params) {
@@ -289,6 +323,39 @@ function dupArrayByAdd(arr, value) {
 }
 
 binding({
+    id: "example1",
+    data: {
+        text: ""
+    },
+    clickText: function () {
+        this.text++;
+    }
+})
+
+binding({
+    id: "example2",
+    data: {
+        left: "",
+        right: "",
+        sum: ""
+    },
+    sum: function () {
+        this.sum = parseInt(this.left) + parseInt(this.right);
+    },
+    multiply: function (data) {
+        console.log(data)
+        this.sum *= data;
+    }
+})
+
+binding({
+    id: "example3",
+    data: {
+        data: "1"
+    }
+})
+
+binding({
     id: "vm1",
     data: {
         a: 0,
@@ -321,7 +388,7 @@ binding({
         this.a++;
         this.b++;
         this.c++;
-        this.callbind("vm1", "callbindTest", [a]);
+        this.callbind("vm1", "callbindTest", [3]);
     }
 })
 

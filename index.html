@@ -5,6 +5,10 @@
     <title>Document</title>
     <script src="observe.js"></script>
     <style>
+    .container{
+        width: 500px;
+        margin: 0 auto;
+    }
         .yellow {
             border-radius: 50%;
         }
@@ -22,19 +26,60 @@
             width: 500px;
             background-color: blanchedalmond;
         }
+        #example1{
+            background-color: #f5f5f5;
+            padding: 30px;
+        }
+       #example2{
+           background-color: #69f5d3;
+           padding: 30px;
+       }
+        #example3{
+            background-color: aquamarine;
+            padding: 30px;
+        }
     </style>
 </head>
 <body>
-<div id="vm1" class="vm2" _class="yellow:a==1,red:b==3,blue:c==5">
-    {{a}} {{b}} {{c}} {{f}}
-    <p>{{a}} {{b}} {{c}}</p>
-    <input type="text" _model="a"/>
-    <a href="javascript:;" _click="addCount()">{{a}}</a>
-</div>
-<div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue:5+c==8">
-    <p>{{a}} {{b}} {{c}}</p>
-    <div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>
-</div>
+    <div class="container">
+        <div id="example1">
+            <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1</span>
+            <br/>
+            <br/>
+            <input type="text" _model="text"/>
+            <a href="javascript:;" _click="clickText()">{{text}}</a>
+        </div>
+        <div id="example2">
+            <span>绑定点击事件，并且可以传递参数</span>
+            <br/>
+            <input type="text" _model="left"/>+
+            <input type="text" _model="right"/>=
+            <a href="javascript:;">{{sum}}</a>
+            <br/>
+            <input type="buttonhen" _click="sum()" value="相加"/>
+            <input type="button" _click="multiply(10)" value="结果乘以10"/>
+        </div>
+        <div id="example3">
+            <span>动态改变class 当满足某一条件时应用某一个class</span>
+            <br/>
+            <select _selected="data">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+            {{data}}
+        </div>
+        <div id="vm1" class="vm2" _class="yellow:a==1,red:b==3,blue:c==5">
+            {{a}} {{b}} {{c}} {{f}}
+            <p>{{a}} {{b}} {{c}}</p>
+            <input type="text" _model="a"/>
+            <a href="javascript:;" _click="addCount()">{{a}}</a>
+        </div>
+        <div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue:5+c==8">
+            <p>{{a}} {{b}} {{c}}</p>
+            <div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>
+        </div>
+    </div>
 <script src="index.js"></script>
 </body>
 </html>
