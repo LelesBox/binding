@@ -1,0 +1,23 @@
+{
+  "name": "binding",
+  "version": "0.0.1",
+  "description": "learn to viewmodel center",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "webpack": "^1.11.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.coding.net/shorly/binding.git"
+  },
+  "keywords": [
+    "vm",
+    "mvvm"
+  ],
+  "author": "LeeBox",
+  "license": "MIT"
+}

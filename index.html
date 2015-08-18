@@ -5,20 +5,24 @@
     <title>Document</title>
     <script src="observe.js"></script>
     <style>
-    .container{
-        width: 500px;
-        margin: 0 auto;
-    }
+        .container {
+            width: 500px;
+            margin: 0 auto;
+        }
+
         .yellow {
             border-radius: 50%;
+            background-color: yellow;
         }
 
         .red {
             border-radius: 10%;
+            background-color: red;
         }
 
         .blue {
             border-radius: 60%;
+            background-color: blue;
         }
 
         .vm1, .vm2 {
@@ -26,60 +30,78 @@
             width: 500px;
             background-color: blanchedalmond;
         }
-        #example1{
+
+        #example1 {
             background-color: #f5f5f5;
             padding: 30px;
         }
-       #example2{
-           background-color: #69f5d3;
-           padding: 30px;
-       }
-        #example3{
-            background-color: aquamarine;
+
+        #example2 {
+            background-color: #69f5d3;
+            padding: 30px;
+        }
+
+        #example3 {
+            background-color: #12d3ff;
+            padding: 30px;
+        }
+        #example5{
+            background-color: #9eff43;
+            padding: 30px;
+        }
+        #example6{
+            background-color: #198e9d;
             padding: 30px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="example1">
-            <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1</span>
+<div class="container">
+    <div id="example1">
+        <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1</span>
+        <br/>
+        <br/>
+        <input type="text" _model="text"/>
+        <a href="javascript:;" _click="clickText()">{{text}}</a>
+    </div>
+    <div id="example2">
+        <span>绑定点击事件，并且可以传递参数</span>
+        <br/>
+        <input type="text" _model="left"/>+
+        <input type="text" _model="right"/>=
+        <a href="javascript:;">{{sum}}</a>
+        <br/>
+        <input type="button" _click="sum()" value="相加"/>
+        <input type="button" _click="multiply(10)" value="结果乘以10"/>
+    </div>
+    <div id="example3">
+        <span>动态改变class 当满足某一条件时应用某一个class</span>
+        <br/>
+        <select _selected="data">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+        </select>
+        {{data}}
+        <div style="height: 100px;width: 100px;" _class="red:data==1,yellow:data==2,blue:data==3"></div>
+    </div>
+    <div id="example4">
+        <span>两个binding实例之间使用callbind通信</span>
+
+        <div id="example5">
+            <span>实例1：</span>
             <br/>
-            <br/>
-            <input type="text" _model="text"/>
-            <a href="javascript:;" _click="clickText()">{{text}}</a>
+            <span>改变实例的数据会改变实例2</span>
+            <input type="text" _model="ctn"/>
         </div>
-        <div id="example2">
-            <span>绑定点击事件，并且可以传递参数</span>
+        <div id="example6">
+            <span>实例2：</span>
             <br/>
-            <input type="text" _model="left"/>+
-            <input type="text" _model="right"/>=
-            <a href="javascript:;">{{sum}}</a>
-            <br/>
-            <input type="buttonhen" _click="sum()" value="相加"/>
-            <input type="button" _click="multiply(10)" value="结果乘以10"/>
-        </div>
-        <div id="example3">
-            <span>动态改变class 当满足某一条件时应用某一个class</span>
-            <br/>
-            <select _selected="data">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-            </select>
-            {{data}}
-        </div>
-        <div id="vm1" class="vm2" _class="yellow:a==1,red:b==3,blue:c==5">
-            {{a}} {{b}} {{c}} {{f}}
-            <p>{{a}} {{b}} {{c}}</p>
-            <input type="text" _model="a"/>
-            <a href="javascript:;" _click="addCount()">{{a}}</a>
-        </div>
-        <div id="vm2" class="vm1" _class="yellow:a+1==1,red:b+3==5,blue:5+c==8">
-            <p>{{a}} {{b}} {{c}}</p>
-            <div style="height: 50px;background-color: aqua" _click="callBind(a)"></div>
+            <span>改变实例2的数据会改变实例1</span>
+            <input type="text" _model="ctn"/>
         </div>
     </div>
-<script src="index.js"></script>
+</div>
+<script src="./dist/bundle.js"></script>
 </body>
 </html>
