@@ -60,3 +60,10 @@ binding({
     }
 })
 
+binding({
+    id: "example7",
+    data: {
+        text: "TEST"
+    }
+})
+
