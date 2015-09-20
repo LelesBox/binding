@@ -27,6 +27,15 @@ var binding = function (args) {
         //非递归版的遍历方法
         while (d = alldoms.shift()) {
             this.mount(d, args);
+            //如果节点带repeat，则其子节点不去处理单独处理
+            var attr = "";
+            for (var k = 0; k < d.attributes.length; k++) {
+                attr += d.attributes[k].name;
+            }
+            if (attr.indexOf("_repeat") > -1) {
+                console.log(attr);
+                continue
+            }
             var length = d.children.length;
             if (length > 0) {
                 while (length--) {
@@ -46,7 +55,37 @@ var binding = function (args) {
     _binding.prototype = {
         //挂载方法
         mount: function (element, args) {
-            //查找文字节点，
+            for (var i = 0, d; d = element.attributes[i++];) {
+                //找到特性属性，以_开头
+                if (startWith(d.name, "_")) {
+                    //因为repeat模式下的特点，_bind对象不能转化Wie{{}}形式，所以先查找repeat对象，在转换_bind值
+                    if (d.name === "_repeat") {
+                        console.log(element)
+                        this._repeat(element, d.value, args);
+                    }
+                    if (d.name === "_bind") {
+                        element.innerHTML = "{{" + d.value + "}}"
+                    }
+                    if (d.name === "_click") {
+                        this._click(element, d, args);
+                    }
+                    if (d.name == "_class") {
+                        var express = d.value.split(",");
+                        this._class(element, express);
+                    }
+                    if (d.name == "_model") {
+                        this._model(element, d.value)
+                    }
+                    if (d.name == "_change") {
+                        this._change(element, d, args);
+                    }
+                    //使用select元素时，这个值绑定选定的option值
+                    if (d.name == "_selected") {
+                        this._selected(element, d.value)
+                    }
+                }
+            }
+            //查找{{}}文字节点，
             for (var j = 0, node; node = element.childNodes[j++];) {
                 if (node.nodeType === 3 && node.data.trim() !== "") {
                     textnodes[textnodeid] = {};
@@ -79,31 +118,6 @@ var binding = function (args) {
                     textnodes[textnodeid]["func"] = tt;
                     textnodes[textnodeid]["params"] = matchs;
                     textnodeid++;
-                }
-            }
-            for (var i = 0, d; d = element.attributes[i++];) {
-                //找到特性属性，以_开头
-                if (startWith(d.name, "_")) {
-                    if (d.name === "_bind") {
-
-                    }
-                    if (d.name === "_click") {
-                        this._click(element, d, args);
-                    }
-                    if (d.name == "_class") {
-                        var express = d.value.split(",");
-                        this._class(element, express);
-                    }
-                    if (d.name == "_model") {
-                        this._model(element, d.value)
-                    }
-                    if (d.name == "_change") {
-                        this._change(element, d, args);
-                    }
-                    //使用select元素时，这个值绑定选定的option值
-                    if (d.name == "_selected") {
-                        this._selected(element, d.value)
-                    }
                 }
             }
         },
@@ -297,6 +311,16 @@ var binding = function (args) {
             element.onchange = function () {
                 self.args.data[value] = this.options[this.options.selectedIndex].value;
             }
+        },
+        _repeat: function (element, value, args) {
+            var clone = element.cloneNode(true);
+
+            var outer = clone.outerHTML;
+            console.log(outer);
+            console.log(typeof outer);
+            var regx = /(_bind=\"(item)|)/;
+            //var s = new Function("return " + clone.outerHTML.trim());
+            //console.log(s)
         },
         //用于binding之间的通信
         callbind: function (name, funcname, params) {

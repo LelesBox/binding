@@ -55,23 +55,45 @@
             background-color: #198e9d;
             padding: 30px;
         }
+
+        #example7 {
+            background-color: #9d9196;
+            padding: 30px;
+        }
+
+        #example8 {
+            background-color: #9d9812;
+            padding: 30px;
+        }
+
+        #example-1 {
+            background-color: #f6ff66;
+            padding: 30px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <div id="example1">
-        <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1</span>
+    <div id="example-1">
+        <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1(测试_bind)</span>
         <br/>
         <br/>
         <input type="text" _model="text"/>
-        <a href="javascript:;" _click="clickText()">{{text}}</a>
+        <a href="javascript:;" _click="clickText()" _bind="text"></a>
+    </div>
+    <div id="example1">
+        <span>双向绑定,输入框输入文字改变输入框右边的的结果，点击右边的结果让输入框加1同时自己也会加1(测试{{}})</span>
+        <br/>
+        <br/>
+        <input type="text" _model="text"/>
+        <a href="javascript:;" _click="clickText()">我的值是{{text}}</a>
     </div>
     <div id="example2">
         <span>绑定点击事件，并且可以传递参数</span>
         <br/>
         <input type="text" _model="left"/>+
         <input type="text" _model="right"/>=
-        <a href="javascript:;">{{sum}}</a>
+        <a href="javascript:;" _bind="sum"></a>
         <br/>
         <input type="button" _click="sum()" value="相加"/>
         <input type="button" _click="multiply(10)" value="结果乘以10"/>
@@ -84,7 +106,8 @@
             <option value="2">2</option>
             <option value="3">3</option>
         </select>
-        {{data}}
+        <span _bind="data"></span>
+
         <div style="height: 100px;width: 100px;" _class="red:data==1,yellow:data==2,blue:data==3"></div>
     </div>
     <div id="example4">
@@ -105,10 +128,19 @@
     </div>
     <div id="example7">
         <span>textarea绑定(跟绑定input一样)</span>
+
         <div>
             <textarea id="area" _model="text"></textarea>
             {{text}}
         </div>
+    </div>
+    <div id="example8">
+        <span>测试 _repeat</span>
+        <ul>
+            <li _repeat="item in items">
+                <a _bind="item"></a>
+            </li>
+        </ul>
     </div>
 </div>
 <script src="./dist/bundle.js"></script>

@@ -47,7 +47,7 @@
 	/**
 	 * Created by li_xiaoliang on 2015/8/18.
 	 */
-	var binding = __webpack_require__(1)
+	var binding = __webpack_require__(1);
 	binding({
 	    id: "example1",
 	    data: {
@@ -106,6 +106,7 @@
 	    }
 	})
 
+
 	binding({
 	    id: "example7",
 	    data: {
@@ -114,15 +115,43 @@
 	})
 
 
+	//测试 _bind
+	binding({
+	    id: "example-1",
+	    data: {
+	        text: ""
+	    },
+	    clickText: function () {
+	        this.text++;
+	    }
+	})
+
+	binding({
+	    id: "example8",
+	    data: {
+	        items: [1, 2, 3]
+	    }
+	})
 
 /***/ },
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
+	 * Created by li_xiaoliang on 2015/9/20.
+	 */
+	var binding = __webpack_require__(2);
+
+	module.exports = binding;
+
+/***/ },
+/* 2 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
 	 * Created by li_xiaoliang on 2015/7/25.
 	 */
-	var observe = __webpack_require__(2);
+	var observe = __webpack_require__(3);
 
 	var binding = function (args) {
 	    //用于标识binding中文本节点的id
@@ -148,6 +177,15 @@
 	        //非递归版的遍历方法
 	        while (d = alldoms.shift()) {
 	            this.mount(d, args);
+	            //如果节点带repeat，则其子节点不去处理单独处理
+	            var attr = "";
+	            for (var k = 0; k < d.attributes.length; k++) {
+	                attr += d.attributes[k].name;
+	            }
+	            if (attr.indexOf("_repeat") > -1) {
+	                console.log(attr);
+	                continue
+	            }
 	            var length = d.children.length;
 	            if (length > 0) {
 	                while (length--) {
@@ -167,7 +205,37 @@
 	    _binding.prototype = {
 	        //挂载方法
 	        mount: function (element, args) {
-	            //查找文字节点，
+	            for (var i = 0, d; d = element.attributes[i++];) {
+	                //找到特性属性，以_开头
+	                if (startWith(d.name, "_")) {
+	                    //因为repeat模式下的特点，_bind对象不能转化Wie{{}}形式，所以先查找repeat对象，在转换_bind值
+	                    if (d.name === "_repeat") {
+	                        console.log(element)
+	                        this._repeat(element, d.value, args);
+	                    }
+	                    if (d.name === "_bind") {
+	                        element.innerHTML = "{{" + d.value + "}}"
+	                    }
+	                    if (d.name === "_click") {
+	                        this._click(element, d, args);
+	                    }
+	                    if (d.name == "_class") {
+	                        var express = d.value.split(",");
+	                        this._class(element, express);
+	                    }
+	                    if (d.name == "_model") {
+	                        this._model(element, d.value)
+	                    }
+	                    if (d.name == "_change") {
+	                        this._change(element, d, args);
+	                    }
+	                    //使用select元素时，这个值绑定选定的option值
+	                    if (d.name == "_selected") {
+	                        this._selected(element, d.value)
+	                    }
+	                }
+	            }
+	            //查找{{}}文字节点，
 	            for (var j = 0, node; node = element.childNodes[j++];) {
 	                if (node.nodeType === 3 && node.data.trim() !== "") {
 	                    textnodes[textnodeid] = {};
@@ -200,31 +268,6 @@
 	                    textnodes[textnodeid]["func"] = tt;
 	                    textnodes[textnodeid]["params"] = matchs;
 	                    textnodeid++;
-	                }
-	            }
-	            for (var i = 0, d; d = element.attributes[i++];) {
-	                //找到特性属性，以_开头
-	                if (startWith(d.name, "_")) {
-	                    if (d.name === "_bind") {
-
-	                    }
-	                    if (d.name === "_click") {
-	                        this._click(element, d, args);
-	                    }
-	                    if (d.name == "_class") {
-	                        var express = d.value.split(",");
-	                        this._class(element, express);
-	                    }
-	                    if (d.name == "_model") {
-	                        this._model(element, d.value)
-	                    }
-	                    if (d.name == "_change") {
-	                        this._change(element, d, args);
-	                    }
-	                    //使用select元素时，这个值绑定选定的option值
-	                    if (d.name == "_selected") {
-	                        this._selected(element, d.value)
-	                    }
 	                }
 	            }
 	        },
@@ -419,6 +462,16 @@
 	                self.args.data[value] = this.options[this.options.selectedIndex].value;
 	            }
 	        },
+	        _repeat: function (element, value, args) {
+	            var clone = element.cloneNode(true);
+
+	            var outer = clone.outerHTML;
+	            console.log(outer);
+	            console.log(typeof outer);
+	            var regx = /(_bind=\"(item)|)/;
+	            //var s = new Function("return " + clone.outerHTML.trim());
+	            //console.log(s)
+	        },
 	        //用于binding之间的通信
 	        callbind: function (name, funcname, params) {
 	            if (funcname === "data") {
@@ -478,7 +531,7 @@
 	module.exports = binding;
 
 /***/ },
-/* 2 */
+/* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module) {/* observejs --- By dnt http://kmdjs.github.io/
@@ -669,10 +722,10 @@
 	    }
 	    ;
 	})(Function('return this')());
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(4)(module)))
 
 /***/ },
-/* 3 */
+/* 4 */
 /***/ function(module, exports) {
 
 	module.exports = function(module) {
