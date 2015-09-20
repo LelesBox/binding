@@ -33,7 +33,6 @@ var binding = function (args) {
                 attr += d.attributes[k].name;
             }
             if (attr.indexOf("_repeat") > -1) {
-                console.log(attr);
                 continue
             }
             var length = d.children.length;
@@ -314,7 +313,7 @@ var binding = function (args) {
         },
         _repeat: function (element, value, args) {
             var clone = element.cloneNode(true);
-
+            //遍历该节点
             var outer = clone.outerHTML;
             console.log(outer);
             console.log(typeof outer);
