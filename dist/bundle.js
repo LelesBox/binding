@@ -1,41 +1,41 @@
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
-
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
-
+/******/
 /******/ 		// Check if module is in cache
 /******/ 		if(installedModules[moduleId])
 /******/ 			return installedModules[moduleId].exports;
-
+/******/
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			exports: {},
 /******/ 			id: moduleId,
 /******/ 			loaded: false
 /******/ 		};
-
+/******/
 /******/ 		// Execute the module function
 /******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-
+/******/
 /******/ 		// Flag the module as loaded
 /******/ 		module.loaded = true;
-
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-
-
+/******/
+/******/
 /******/ 	// expose the modules object (__webpack_modules__)
 /******/ 	__webpack_require__.m = modules;
-
+/******/
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
-
+/******/
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
-
+/******/
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(0);
 /******/ })
@@ -57,7 +57,7 @@
 	        this.text++;
 	    }
 	})
-
+	
 	binding({
 	    id: "example2",
 	    data: {
@@ -72,14 +72,14 @@
 	        this.sum *= data;
 	    }
 	})
-
+	
 	binding({
 	    id: "example3",
 	    data: {
 	        data: ""
 	    }
 	})
-
+	
 	binding({
 	    id: "example5",
 	    data: {
@@ -92,7 +92,7 @@
 	        console.log("I AM TEST　" + data)
 	    }
 	})
-
+	
 	binding({
 	    id: "example6",
 	    data: {
@@ -105,16 +105,16 @@
 	        this.callbind("example5", "test", [newvalue]);
 	    }
 	})
-
-
+	
+	
 	binding({
 	    id: "example7",
 	    data: {
 	        text: "TEST"
 	    }
 	})
-
-
+	
+	
 	//测试 _bind
 	binding({
 	    id: "example-1",
@@ -125,7 +125,7 @@
 	        this.text++;
 	    }
 	})
-
+	
 	binding({
 	    id: "example8",
 	    data: {
@@ -141,7 +141,7 @@
 	 * Created by li_xiaoliang on 2015/9/20.
 	 */
 	var binding = __webpack_require__(2);
-
+	
 	module.exports = binding;
 
 /***/ },
@@ -152,7 +152,7 @@
 	 * Created by li_xiaoliang on 2015/7/25.
 	 */
 	var observe = __webpack_require__(3);
-
+	
 	var binding = function (args) {
 	    //用于标识binding中文本节点的id
 	    var textnodeid = 0;
@@ -178,13 +178,8 @@
 	        while (d = alldoms.shift()) {
 	            this.mount(d, args);
 	            //如果节点带repeat，则其子节点不去处理单独处理
-	            var attr = "";
-	            for (var k = 0; k < d.attributes.length; k++) {
-	                attr += d.attributes[k].name;
-	            }
-	            if (attr.indexOf("_repeat") > -1) {
+	            if (hasAttribute(d, "_repeat"))
 	                continue
-	            }
 	            var length = d.children.length;
 	            if (length > 0) {
 	                while (length--) {
@@ -197,10 +192,8 @@
 	        if (args.init) {
 	            args.init.apply(args.data);
 	        }
-	        //    监听所有data数据
-	        //this.obserData(args);
 	    }
-
+	
 	    _binding.prototype = {
 	        //挂载方法
 	        mount: function (element, args) {
@@ -209,14 +202,16 @@
 	                if (startWith(d.name, "_")) {
 	                    //因为repeat模式下的特点，_bind对象不能转化Wie{{}}形式，所以先查找repeat对象，在转换_bind值
 	                    if (d.name === "_repeat") {
-	                        console.log(element)
 	                        this._repeat(element, d.value, args);
 	                    }
 	                    if (d.name === "_bind") {
-	                        element.innerHTML = "{{" + d.value + "}}"
+	                        if (d.value.indexOf("'") > -1 || d.value.indexOf('"') > -1 || /^[0-9]*$/.test(d.value))
+	                            element.innerHTML = d.value.replace(/'/g, "");
+	                        else
+	                            element.innerHTML = "{{" + d.value + "}}"
 	                    }
 	                    if (d.name === "_click") {
-	                        this._click(element, d, args);
+	                        this._click(element, d.value, args);
 	                    }
 	                    if (d.name == "_class") {
 	                        var express = d.value.split(",");
@@ -248,10 +243,13 @@
 	                    node.data = node.data.replace(/{{(.*?)}}/g, function (match, value, index, str) {
 	                        //保存可以动态更新的变量
 	                        //保存变量对应的nodeid
-	                        if (!textVariables[value]) {
-	                            textVariables[value] = [];
-	                        }
-	                        if (args.data[value] != undefined) {
+	                        //双花括号里可能是'a'或者是数字，这种情况下直接显示它们
+	                        if (value.indexOf("'") > -1 || /^[0-9]*$/.test(value)) {
+	                            return value.replace(/'/g, "");
+	                        } else if (args.data[value] != undefined) {
+	                            if (!textVariables[value]) {
+	                                textVariables[value] = [];
+	                            }
 	                            dupArrayByAdd(matchs, value);
 	                            t = t + "+'" + str.substring(offset, index) + "'+" + value;
 	                            dupArrayByAdd(textVariables[value], textnodeid);
@@ -270,11 +268,10 @@
 	                }
 	            }
 	        },
-	        _click: function (element, d, args) {
+	        _click: function (element, value, args) {
 	            //    解析字符串，获取函数名和方法参数，判断参数是变量还是字符串
-	            var str = d.value;
-	            var funcName = str.substr(0, str.indexOf("("));
-	            var paramStr = str.substring(str.indexOf("(") + 1, str.length - 1);
+	            var funcName = value.substr(0, value.indexOf("("));
+	            var paramStr = value.substring(value.indexOf("(") + 1, value.length - 1);
 	            var params = paramStr.split(",");
 	            element.onclick = function (event) {
 	                //不冒泡
@@ -329,26 +326,17 @@
 	                        _params: ps
 	                    });
 	                } else {
-	                    //    无参数，可是你为什么要写一个无参数的表达式呢？
+	                    //    无参数，可是你为什么要写一个无参数的表达式呢？(还真需要)
+	                    //    在repeat标签的时候，class表达式的变量被确定，所以在这里是无参数
+	                    var func = new Function("return " + exs);
+	                    var result = func();
+	                    result ? addClass(element, _class) : removeClass(element, _class);
 	                }
 	            }
-	            observe(args.data, function (name, value, oldvale) {
-	                if (classFuncs[name] && classFuncs[name].length > 0) {
-	                    forEach(classFuncs[name], function (index, item, arr) {
-	                        var params = [];
-	                        for (var i = 0; i < item._params.length; i++) {
-	                            params.push(args.data[item._params[i]]);
-	                        }
-	                        var result = item._func.apply(null, params);
-	                        result ? addClass(item._element, item._class) : removeClass(item._element, item._class);
-	                    })
-	                }
-	            })
 	        },
 	        //从表达式里抽取现有的参数
 	        extractParam: function (express) {
 	            var params = [];
-
 	            for (var s in args.data) {
 	                //获取非函数变量
 	                if (args.data.hasOwnProperty(s) && !isFunction(args.data[s])) {
@@ -364,6 +352,7 @@
 	        },
 	        //监听字符串，主要在处理{{文本}}
 	        obserData: function (args) {
+	            //监听双向等绑定文本
 	            observe(args.data, function (name, newvalue, oldvalue) {
 	                var tv = textVariables[name];
 	                if (tv) {
@@ -388,6 +377,19 @@
 	                    }
 	                }
 	            })
+	            //    监听_class中变量的变化导致class的变化
+	            observe(args.data, function (name, value, oldvale) {
+	                if (classFuncs[name] && classFuncs[name].length > 0) {
+	                    forEach(classFuncs[name], function (index, item, arr) {
+	                        var params = [];
+	                        for (var i = 0; i < item._params.length; i++) {
+	                            params.push(args.data[item._params[i]]);
+	                        }
+	                        var result = item._func.apply(null, params);
+	                        result ? addClass(item._element, item._class) : removeClass(item._element, item._class);
+	                    })
+	                }
+	            })
 	        },
 	        _model: function (element, prop) {
 	            var self = this;
@@ -408,7 +410,7 @@
 	                    event.cancelBubble = true;
 	                }
 	            }
-
+	
 	            var nodeid = textnodeid++;
 	            textnodes[nodeid] = {node: element, type: "input", variable: prop};
 	            if (!textVariables[prop]) {
@@ -462,14 +464,28 @@
 	            }
 	        },
 	        _repeat: function (element, value, args) {
+	            var item = value.substring(0, value.indexOf("in") - 1);
+	            value = value.substring(value.indexOf("in") + 3);
+	            var datas = args.data[value]
 	            var clone = element.cloneNode(true);
 	            //遍历该节点
+	            //目前纠结的问题是是否在repeat里面还要实现双向绑定，如果没有意义的话，只有根据监听的数组
+	            //的变化来重新生成dom就好了。所以我这里
+	            clone.removeAttribute("_repeat");
 	            var outer = clone.outerHTML;
 	            console.log(outer);
-	            console.log(typeof outer);
+	            console.log(item)
+	            var rstr = "(^|\\W)(" + item + "(?!'))(\\W|$)";
+	            var rgx = new RegExp(rstr, "g");
+	            outer = outer.replace(rgx, function (val, item1, item2, item3, index, str) {
+	                var item = val.replace(new RegExp("item", "g"), "'23'");
+	                return item;
+	            })
+	            var s = document.createComment("_repeat")
+	            console.log(s);
+	
+	            element.parentNode.replaceChild(s, element);
 	            var regx = /(_bind=\"(item)|)/;
-	            //var s = new Function("return " + clone.outerHTML.trim());
-	            //console.log(s)
 	        },
 	        //用于binding之间的通信
 	        callbind: function (name, funcname, params) {
@@ -490,7 +506,7 @@
 	binding.binds = {};
 	//测试代码。用于获取内部的数据用于外部测试
 	binding.test = {};
-
+	
 	function startWith(target, str, ignorCase) {
 	    var start_str = target.substr(0, str.length);
 	    return ignorCase ? start_str.toLowerCase() === str.toLowerCase() : start_str === str;
@@ -526,6 +542,14 @@
 	        }
 	    }
 	    arr.push(value);
+	}
+	//判断该节点是否包含属性
+	function hasAttribute(elelemet, attr) {
+	    for (var i = 0; i < elelemet.attributes.length; i++) {
+	        if (elelemet.attributes[i].name == attr)
+	            return true;
+	    }
+	    return false;
 	}
 	module.exports = binding;
 
@@ -700,7 +724,7 @@
 	        }
 	        return path.split("-")[1];
 	    }
-
+	
 	    observe.add = function (obj, prop, value) {
 	        obj[prop] = value;
 	        var $observer = obj.$observer;
@@ -709,7 +733,7 @@
 	    Array.prototype.size = function (length) {
 	        this.length = length;
 	    }
-
+	
 	    if (typeof module != 'undefined' && module.exports && this.module !== module) {
 	        module.exports = observe
 	    }
@@ -741,3 +765,4 @@
 
 /***/ }
 /******/ ]);
+//# sourceMappingURL=bundle.js.map
