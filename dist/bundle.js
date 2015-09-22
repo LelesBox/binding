@@ -129,7 +129,11 @@
 	binding({
 	    id: "example8",
 	    data: {
-	        items: [1, 2, 3]
+	        items: [1, 2, 3],
+	        itemObjs: [{a: 1}, {a: 2}, {a: 'a'}]
+	    },
+	    itemClick: function (n) {
+	        console.log(n);
 	    }
 	})
 
@@ -464,28 +468,57 @@
 	            }
 	        },
 	        _repeat: function (element, value, args) {
-	            var item = value.substring(0, value.indexOf("in") - 1);
+	            var iteration = value.substring(0, value.indexOf("in") - 1);
 	            value = value.substring(value.indexOf("in") + 3);
-	            var datas = args.data[value]
+	            var data = args.data[value]
 	            var clone = element.cloneNode(true);
+	            var parent = element.parentNode.cloneNode(true);
+	            var target;
+	            for (var i = 0, len = parent.children.length; i < len; i++) {
+	                if (hasAttribute(parent.children[i], "_repeat")) {
+	                    target = parent.children[i];
+	                }
+	            }
 	            //遍历该节点
 	            //目前纠结的问题是是否在repeat里面还要实现双向绑定，如果没有意义的话，只有根据监听的数组
 	            //的变化来重新生成dom就好了。所以我这里
 	            clone.removeAttribute("_repeat");
 	            var outer = clone.outerHTML;
-	            console.log(outer);
-	            console.log(item)
-	            var rstr = "(^|\\W)(" + item + "(?!'))(\\W|$)";
-	            var rgx = new RegExp(rstr, "g");
-	            outer = outer.replace(rgx, function (val, item1, item2, item3, index, str) {
-	                var item = val.replace(new RegExp("item", "g"), "'23'");
-	                return item;
-	            })
-	            var s = document.createComment("_repeat")
-	            console.log(s);
-	
-	            element.parentNode.replaceChild(s, element);
-	            var regx = /(_bind=\"(item)|)/;
+	            var rgx = new RegExp("(^|\\W)(" + iteration + "(\\.\\w+)*(?!'))(\\W|$)", "g");
+	            var _html = "";
+	            for (var i = 0; i < data.length; i++) {
+	                _html += outer.replace(rgx, function (val, item1, item2, item3, index, str) {
+	                    var func = new Function(iteration, "return " + item2);
+	                    return val.replace(new RegExp(item2, "g"), StringToAttrValue(func(data[i])));
+	                }) + "\n";
+	            }
+	            var _element = innerHTMLToElement(_html);
+	            if (_element.length) {
+	                for (var i = 0, len = _element.length; i < len; i++) {
+	                    //遍历，挂载方法
+	                    var alldoms = [];
+	                    alldoms.push(_element[0]);
+	                    //子节点
+	                    var d;
+	                    //非递归版的遍历方法
+	                    while (d = alldoms.shift()) {
+	                        this.mount(d, this.args);
+	                        //如果节点带repeat，则其子节点不去处理单独处理
+	                        if (hasAttribute(d, "_repeat"))
+	                            continue
+	                        var length = d.children.length;
+	                        if (length > 0) {
+	                            while (length--) {
+	                                //如果这些元素以后用不上的话，没必要保存，遍历过后的元素直接置为null
+	                                alldoms.push(d.children[length]);
+	                            }
+	                        }
+	                    }
+	                    parent.insertBefore(_element[0], target);
+	                }
+	            }
+	            parent.removeChild(target);
+	            element.parentNode.parentNode.replaceChild(parent, element.parentNode);
 	        },
 	        //用于binding之间的通信
 	        callbind: function (name, funcname, params) {
@@ -550,6 +583,22 @@
 	            return true;
 	    }
 	    return false;
+	}
+	//innerHTML转化为element,特例是innerHTML是一系列的li 返回的话应该是数组
+	function innerHTMLToElement(html) {
+	    var _element = document.createElement("div");
+	    _element.innerHTML = html;
+	    if (_element.children.length > 0)
+	        return _element.children;
+	    else
+	        return _element.firstChild;
+	}
+	//字符串添加单引号，数字不管
+	function StringToAttrValue(obj) {
+	    if (typeof obj === "string")
+	        return "'" + obj + "'";
+	    else
+	        return obj;
 	}
 	module.exports = binding;
 

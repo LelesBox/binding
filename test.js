@@ -83,6 +83,10 @@ binding({
 binding({
     id: "example8",
     data: {
-        items: [1, 2, 3]
+        items: [1, 2, 3],
+        itemObjs: [{a: 1}, {a: 2}, {a: 'a'}]
+    },
+    itemClick: function (n) {
+        console.log(n);
     }
 })

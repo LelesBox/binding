@@ -144,6 +144,14 @@
                 <a _class="red:1+1==item">asd</a>
             </li>
         </ul>
+        <ul>
+            <li _repeat="item in itemObjs">
+                <a _bind="item.a"></a>
+                <a>{{item.a}}</a>
+                <a _click="itemClick(item)">asd</a>
+                <a _class="red:1+1==item.a">asd</a>
+            </li>
+        </ul>
     </div>
 </div>
 <script src="./dist/bundle.js"></script>
