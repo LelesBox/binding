@@ -134,6 +134,7 @@
 	    },
 	    itemClick: function (n) {
 	        console.log(n);
+	        this.items.push(1);
 	    }
 	})
 
@@ -174,24 +175,7 @@
 	        args.data["callbind"] = this.callbind;
 	        var top = document.getElementById(args.id);
 	        //   遍历节点
-	        var alldoms = [];
-	        alldoms.push(top);
-	        //子节点
-	        var d;
-	        //非递归版的遍历方法
-	        while (d = alldoms.shift()) {
-	            this.mount(d, args);
-	            //如果节点带repeat，则其子节点不去处理单独处理
-	            if (hasAttribute(d, "_repeat"))
-	                continue
-	            var length = d.children.length;
-	            if (length > 0) {
-	                while (length--) {
-	                    //如果这些元素以后用不上的话，没必要保存，遍历过后的元素直接置为null
-	                    alldoms.push(d.children[length]);
-	                }
-	            }
-	        }
+	        this.traversalAndMount(top);
 	        //    执行初始化操作init
 	        if (args.init) {
 	            args.init.apply(args.data);
@@ -345,8 +329,7 @@
 	                //获取非函数变量
 	                if (args.data.hasOwnProperty(s) && !isFunction(args.data[s])) {
 	                    //匹配一个变量
-	                    var rstr = "(^|\\W)(" + s + "(?!'))(\\W|$)";
-	                    var rgx = new RegExp(rstr);
+	                    var rgx = new RegExp("(^|\\W)(" + s + "(\\.\\w+)*(?!'))(\\W|$)", "g");
 	                    if (rgx.test(express)) {
 	                        params.push(s);
 	                    }
@@ -470,15 +453,18 @@
 	        _repeat: function (element, value, args) {
 	            var iteration = value.substring(0, value.indexOf("in") - 1);
 	            value = value.substring(value.indexOf("in") + 3);
-	            var data = args.data[value]
 	            var clone = element.cloneNode(true);
 	            var parent = element.parentNode.cloneNode(true);
 	            var target;
+	            //因为要在dom外操作节点，所以需要找到clone父节点的repeat节点进行操作
 	            for (var i = 0, len = parent.children.length; i < len; i++) {
 	                if (hasAttribute(parent.children[i], "_repeat")) {
 	                    target = parent.children[i];
 	                }
 	            }
+	            //创建评论节点替代目标节点，这个节点的作用用于定位，好让循环出来的数据插入它之前
+	            var comment = document.createComment("_repeat end");
+	            parent.replaceChild(comment, target);
 	            //遍历该节点
 	            //目前纠结的问题是是否在repeat里面还要实现双向绑定，如果没有意义的话，只有根据监听的数组
 	            //的变化来重新生成dom就好了。所以我这里
@@ -486,6 +472,7 @@
 	            var outer = clone.outerHTML;
 	            var rgx = new RegExp("(^|\\W)(" + iteration + "(\\.\\w+)*(?!'))(\\W|$)", "g");
 	            var _html = "";
+	            var data = args.data[value]
 	            for (var i = 0; i < data.length; i++) {
 	                _html += outer.replace(rgx, function (val, item1, item2, item3, index, str) {
 	                    var func = new Function(iteration, "return " + item2);
@@ -495,30 +482,16 @@
 	            var _element = innerHTMLToElement(_html);
 	            if (_element.length) {
 	                for (var i = 0, len = _element.length; i < len; i++) {
-	                    //遍历，挂载方法
-	                    var alldoms = [];
-	                    alldoms.push(_element[0]);
-	                    //子节点
-	                    var d;
-	                    //非递归版的遍历方法
-	                    while (d = alldoms.shift()) {
-	                        this.mount(d, this.args);
-	                        //如果节点带repeat，则其子节点不去处理单独处理
-	                        if (hasAttribute(d, "_repeat"))
-	                            continue
-	                        var length = d.children.length;
-	                        if (length > 0) {
-	                            while (length--) {
-	                                //如果这些元素以后用不上的话，没必要保存，遍历过后的元素直接置为null
-	                                alldoms.push(d.children[length]);
-	                            }
-	                        }
-	                    }
-	                    parent.insertBefore(_element[0], target);
+	                    this.traversalAndMount(_element[0]);
+	                    parent.insertBefore(_element[0], comment);
 	                }
 	            }
-	            parent.removeChild(target);
+	
 	            element.parentNode.parentNode.replaceChild(parent, element.parentNode);
+	            observe(args.data[value], function () {
+	                console.log("_repeat is changed")
+	                console.log(arguments);
+	            })
 	        },
 	        //用于binding之间的通信
 	        callbind: function (name, funcname, params) {
@@ -528,6 +501,27 @@
 	                }
 	            } else {
 	                binding.binds[name].args[funcname].apply(binding.binds[name].args.data, params);
+	            }
+	        },
+	        //    遍历节点并挂载方法
+	        traversalAndMount: function (element) {
+	            var alldoms = [];
+	            alldoms.push(element);
+	            //子节点
+	            var d;
+	            //非递归版的遍历方法
+	            while (d = alldoms.shift()) {
+	                this.mount(d, this.args);
+	                //如果节点带repeat，则其子节点不去处理单独处理
+	                if (hasAttribute(d, "_repeat"))
+	                    continue
+	                var length = d.children.length;
+	                if (length > 0) {
+	                    while (length--) {
+	                        //如果这些元素以后用不上的话，没必要保存，遍历过后的元素直接置为null
+	                        alldoms.push(d.children[length]);
+	                    }
+	                }
 	            }
 	        }
 	    }
@@ -599,6 +593,27 @@
 	        return "'" + obj + "'";
 	    else
 	        return obj;
+	}
+	//遍历节点，挂载方法
+	function mount(element, args, mount) {
+	    var alldoms = [];
+	    alldoms.push(element);
+	    //子节点
+	    var d;
+	    //非递归版的遍历方法
+	    while (d = alldoms.shift()) {
+	        mount(d, args);
+	        //如果节点带repeat，则其子节点不去处理单独处理
+	        if (hasAttribute(d, "_repeat"))
+	            continue
+	        var length = d.children.length;
+	        if (length > 0) {
+	            while (length--) {
+	                //如果这些元素以后用不上的话，没必要保存，遍历过后的元素直接置为null
+	                alldoms.push(d.children[length]);
+	            }
+	        }
+	    }
 	}
 	module.exports = binding;
 

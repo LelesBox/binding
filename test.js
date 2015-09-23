@@ -88,5 +88,6 @@ binding({
     },
     itemClick: function (n) {
         console.log(n);
+        this.items.push(1);
     }
 })
