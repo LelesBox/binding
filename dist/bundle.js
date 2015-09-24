@@ -460,37 +460,51 @@
 	            for (var i = 0, len = parent.children.length; i < len; i++) {
 	                if (hasAttribute(parent.children[i], "_repeat")) {
 	                    target = parent.children[i];
+	                    break;
 	                }
 	            }
-	            //创建评论节点替代目标节点，这个节点的作用用于定位，好让循环出来的数据插入它之前
-	            var comment = document.createComment("_repeat end");
-	            parent.replaceChild(comment, target);
-	            //遍历该节点
-	            //目前纠结的问题是是否在repeat里面还要实现双向绑定，如果没有意义的话，只有根据监听的数组
-	            //的变化来重新生成dom就好了。所以我这里
 	            clone.removeAttribute("_repeat");
+	            //创建评论节点替代目标节点，这个节点的作用用于定位，好让循环出来的数据插入它之前
+	            var start_comment = document.createComment("_repeat start");
+	            var end_comment = document.createComment("_repeat end");
+	            parent.replaceChild(end_comment, target);
+	            parent.insertBefore(start_comment, end_comment);
 	            var outer = clone.outerHTML;
-	            var rgx = new RegExp("(^|\\W)(" + iteration + "(\\.\\w+)*(?!'))(\\W|$)", "g");
-	            var _html = "";
-	            var data = args.data[value]
-	            for (var i = 0; i < data.length; i++) {
-	                _html += outer.replace(rgx, function (val, item1, item2, item3, index, str) {
-	                    var func = new Function(iteration, "return " + item2);
-	                    return val.replace(new RegExp(item2, "g"), StringToAttrValue(func(data[i])));
-	                }) + "\n";
-	            }
-	            var _element = innerHTMLToElement(_html);
-	            if (_element.length) {
-	                for (var i = 0, len = _element.length; i < len; i++) {
-	                    this.traversalAndMount(_element[0]);
-	                    parent.insertBefore(_element[0], comment);
+	
+	            function renderRepeat(element, parent, outer, arg, mark) {
+	                var rgx = new RegExp("(^|\\W)(" + iteration + "(\\.\\w+)*(?!'))(\\W|$)", "g");
+	                var _html = "";
+	                for (var i = 0; i < arg.length; i++) {
+	                    _html += outer.replace(rgx, function (val, item1, item2, item3, index, str) {
+	                        var func = new Function(iteration, "return " + item2);
+	                        return val.replace(new RegExp(item2, "g"), StringToAttrValue(func(arg[i])));
+	                    }) + "\n";
 	                }
+	                var _element = innerHTMLToElement(_html);
+	                if (_element.length) {
+	                    for (var i = 0, len = _element.length; i < len; i++) {
+	                        this.traversalAndMount(_element[0]);
+	                        parent.insertBefore(_element[0], mark);
+	                    }
+	                }
+	                element.parentNode.parentNode.replaceChild(parent, element.parentNode);
 	            }
 	
-	            element.parentNode.parentNode.replaceChild(parent, element.parentNode);
-	            observe(args.data[value], function () {
-	                console.log("_repeat is changed")
-	                console.log(arguments);
+	            var self = this;
+	            renderRepeat.call(self, element, parent, outer, args.data[value], end_comment);
+	
+	            //监听数组变化
+	            observe(args.data[value], function (name, newval, oldval) {
+	                var parent = element.parentNode.cloneNode(true);
+	                //    找到被插入的标记，这里是一个comment 内容为 _repeat start
+	                var end_comment;
+	                for (var i = 0, len = parent.children.length; i < len; i++) {
+	                    if (parent.children[i].nodeType === 8 && parent.children[i].nodeValue === "_repeat end") {
+	                        end_comment = parent.children[i];
+	                        break;
+	                    }
+	                }
+	                renderRepeat.call(self, element, parent, outer, args.data[value], end_comment);
 	            })
 	        },
 	        //用于binding之间的通信
