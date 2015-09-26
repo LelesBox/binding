@@ -135,6 +135,13 @@
 	    itemClick: function (n) {
 	        console.log(n);
 	        this.items.push(1);
+	    },
+	    init: function () {
+	        var self = this;
+	        setTimeout(function () {
+	            console.log(self);
+	            //self.items.push(4);
+	        }, 2000)
 	    }
 	})
 
@@ -487,9 +494,9 @@
 	                        parent.insertBefore(_element[0], mark);
 	                    }
 	                }
+	                console.log(element.parentNode.parentNode)
 	                element.parentNode.parentNode.replaceChild(parent, element.parentNode);
 	            }
-	
 	            var self = this;
 	            renderRepeat.call(self, element, parent, outer, args.data[value], end_comment);
 	

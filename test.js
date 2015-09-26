@@ -89,5 +89,12 @@ binding({
     itemClick: function (n) {
         console.log(n);
         this.items.push(1);
+    },
+    init: function () {
+        var self = this;
+        setTimeout(function () {
+            console.log(self);
+            //self.items.push(4);
+        }, 2000)
     }
 })

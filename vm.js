@@ -332,6 +332,7 @@ var binding = function (args) {
                         parent.insertBefore(_element[0], mark);
                     }
                 }
+                console.log(element.parentNode.parentNode)
                 element.parentNode.parentNode.replaceChild(parent, element.parentNode);
             }
             var self = this;
